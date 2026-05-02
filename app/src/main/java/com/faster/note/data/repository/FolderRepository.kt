@@ -8,6 +8,8 @@ class FolderRepository(private val folderDao: FolderDao) {
 
     val allFolders: Flow<List<FolderEntity>> = folderDao.getAllFolders()
 
+    fun getNoteCountForFolder(folderId: Long): Flow<Int> = folderDao.getNoteCountForFolder(folderId)
+
     suspend fun getFolderById(id: Long) = folderDao.getFolderById(id)
 
     suspend fun saveFolder(folder: FolderEntity): Long = folderDao.insertFolder(folder)

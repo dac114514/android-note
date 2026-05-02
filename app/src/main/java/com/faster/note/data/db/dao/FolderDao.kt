@@ -19,6 +19,11 @@ class FolderDao(private val db: DatabaseHelper) {
         .map { db.getAllFolders() }
         .flowOn(Dispatchers.IO)
 
+    fun getNoteCountForFolder(folderId: Long): Flow<Int> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getNoteCountForFolder(folderId) }
+        .flowOn(Dispatchers.IO)
+
     suspend fun getFolderById(id: Long): FolderEntity? = withContext(Dispatchers.IO) {
         db.getFolderById(id)
     }

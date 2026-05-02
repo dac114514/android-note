@@ -48,6 +48,15 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         return list
     }
 
+    fun getNoteCountForFolder(folderId: Long): Int {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT COUNT(*) FROM notes WHERE folderId = ?",
+            arrayOf(folderId.toString())
+        )
+        return cursor.use { if (it.moveToFirst()) it.getInt(0) else 0 }
+    }
+
     fun getNotesByTag(tagId: Long): List<NoteEntity> {
         val list = mutableListOf<NoteEntity>()
         getReadableDatabase().rawQuery(
