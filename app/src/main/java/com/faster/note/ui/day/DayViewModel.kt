@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.faster.note.data.db.entity.CategoryEntity
 import com.faster.note.data.db.entity.ScheduleEntity
+import com.faster.note.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.*
 import java.util.*
 
@@ -21,7 +22,6 @@ class DayViewModel : ViewModel() {
 
     private val _currentDate = MutableStateFlow(Calendar.getInstance())
     private val _schedules = MutableStateFlow(mockSchedules())
-    private val _categories = MutableStateFlow(mockCategories())
 
     val uiState: StateFlow<DayUiState> = combine(
         _currentDate.flatMapLatest { cal ->
@@ -35,7 +35,7 @@ class DayViewModel : ViewModel() {
                     .sortedWith(compareBy<ScheduleEntity> { !it.isAllDay }.thenBy { it.startTime ?: Long.MAX_VALUE })
             }
         },
-        _categories
+        CategoryRepository.categories
     ) { schedules, categories ->
         DayUiState(
             year = _currentDate.value.get(Calendar.YEAR),
@@ -75,13 +75,6 @@ class DayViewModel : ViewModel() {
     }
 
     companion object {
-        fun mockCategories(): List<CategoryEntity> = listOf(
-            CategoryEntity(id = 1, name = "工作", color = 0xFF1565C0.toInt(), isPreset = true, sortOrder = 1),
-            CategoryEntity(id = 2, name = "个人", color = 0xFF43A047.toInt(), isPreset = true, sortOrder = 2),
-            CategoryEntity(id = 3, name = "学习", color = 0xFFE53935.toInt(), isPreset = true, sortOrder = 3),
-            CategoryEntity(id = 4, name = "健康", color = 0xFFFB8C00.toInt(), isPreset = true, sortOrder = 4),
-        )
-
         fun mockSchedules(): List<ScheduleEntity> {
             val today = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)

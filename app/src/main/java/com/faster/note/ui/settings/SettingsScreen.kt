@@ -226,6 +226,17 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text("颜色", style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            modifier = Modifier.size(24.dp),
+                            shape = MaterialTheme.shapes.small,
+                            color = Color(selectedColor),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {}
+                        Spacer(Modifier.width(8.dp))
+                        Text("当前颜色", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Spacer(Modifier.height(8.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

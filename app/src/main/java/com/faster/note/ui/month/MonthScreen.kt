@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -183,11 +182,7 @@ fun MonthScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一个月")
                 }
 
-                TextButton(onClick = viewModel::goToToday) {
-                    Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("今天")
-                }
+                Spacer(modifier = Modifier.weight(1f))
 
                 SmallFloatingActionButton(
                     onClick = viewModel::goToNextMonth,
