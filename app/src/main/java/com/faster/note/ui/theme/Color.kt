@@ -2,17 +2,69 @@ package com.faster.note.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Blue80 = Color(0xFFB3D4FF)
-val BlueGrey80 = Color(0xFFB0BEC5)
-val Teal80 = Color(0xFF80CBC4)
+// Light Theme Colors
+val LightPrimary = Color(0xFF1565C0)        // Blue 800
+val LightOnPrimary = Color(0xFFFFFFFF)
+val LightPrimaryContainer = Color(0xFFD1E4FF)
+val LightOnPrimaryContainer = Color(0xFF001D36)
+val LightSecondary = Color(0xFF5B5F6F)
+val LightOnSecondary = Color(0xFFFFFFFF)
+val LightSecondaryContainer = Color(0xFFE2E2F9)
+val LightOnSecondaryContainer = Color(0xFF181B2B)
+val LightTertiary = Color(0xFF00897B)
+val LightOnTertiary = Color(0xFFFFFFFF)
+val LightTertiaryContainer = Color(0xFFA7F0E5)
+val LightOnTertiaryContainer = Color(0xFF00201C)
+val LightError = Color(0xFFBA1A1A)
+val LightOnError = Color(0xFFFFFFFF)
+val LightErrorContainer = Color(0xFFFFDAD6)
+val LightOnErrorContainer = Color(0xFF410002)
+val LightBackground = Color(0xFFFDFBFF)
+val LightOnBackground = Color(0xFF1A1C1E)
+val LightSurface = Color(0xFFFDFBFF)
+val LightOnSurface = Color(0xFF1A1C1E)
+val LightSurfaceVariant = Color(0xFFF3F0F4)
+val LightOnSurfaceVariant = Color(0xFF49454F)
+val LightOutline = Color(0xFF79747E)
+val LightOutlineVariant = Color(0xFFCAC4D0)
+val LightInverseSurface = Color(0xFF2E3033)
+val LightInverseOnSurface = Color(0xFFF2F0F4)
+val LightInversePrimary = Color(0xFF9ECAFF)
+val LightSurfaceTint = Color(0xFF1565C0)
 
-val Blue40 = Color(0xFF1565C0)
-val BlueGrey40 = Color(0xFF546E7A)
-val Teal40 = Color(0xFF00897B)
+// Dark Theme Colors
+val DarkPrimary = Color(0xFF9ECAFF)         // Blue 200
+val DarkOnPrimary = Color(0xFF002952)
+val DarkPrimaryContainer = Color(0xFF003F73)
+val DarkOnPrimaryContainer = Color(0xFFD1E4FF)
+val DarkSecondary = Color(0xFFC7C6DE)
+val DarkOnSecondary = Color(0xFF2E3042)
+val DarkSecondaryContainer = Color(0xFF444758)
+val DarkOnSecondaryContainer = Color(0xFFE2E2F9)
+val DarkTertiary = Color(0xFF4EDBCA)
+val DarkOnTertiary = Color(0xFF003733)
+val DarkTertiaryContainer = Color(0xFF00504A)
+val DarkOnTertiaryContainer = Color(0xFFA7F0E5)
+val DarkError = Color(0xFFFFB4AB)
+val DarkOnError = Color(0xFF690005)
+val DarkErrorContainer = Color(0xFF93000A)
+val DarkOnErrorContainer = Color(0xFFFFDAD6)
+val DarkBackground = Color(0xFF1A1C1E)
+val DarkOnBackground = Color(0xFFE3E2E6)
+val DarkSurface = Color(0xFF1A1C1E)
+val DarkOnSurface = Color(0xFFE3E2E6)
+val DarkSurfaceVariant = Color(0xFF2A2C2F)
+val DarkOnSurfaceVariant = Color(0xFFC7C5CA)
+val DarkOutline = Color(0xFF938F99)
+val DarkOutlineVariant = Color(0xFF44464E)
+val DarkInverseSurface = Color(0xFFE3E2E6)
+val DarkInverseOnSurface = Color(0xFF1A1C1E)
+val DarkInversePrimary = Color(0xFF1565C0)
+val DarkSurfaceTint = Color(0xFF9ECAFF)
 
-// Note card colors
+// Note card colors (blue-accented palette)
 val NoteColors = listOf(
-    Color(0xFFFFF3E0), Color(0xFFE8F5E9), Color(0xFFE3F2FD),
-    Color(0xFFFCE4EC), Color(0xFFF3E5F5), Color(0xFFE0F7FA),
-    Color(0xFFFFFDE7), Color(0xFFFBE9E7)
+    Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9),
+    Color(0xFFE8F5E9), Color(0xFFFFF3E0), Color(0xFFFCE4EC),
+    Color(0xFFF3E5F5), Color(0xFFE0F7FA)
 )
