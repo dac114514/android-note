@@ -20,7 +20,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.faster.note.ui.components.ApiKeyDialog
 import com.faster.note.ui.components.CalendarGrid
+import com.faster.note.ui.components.MarkdownText
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,6 +35,7 @@ fun MonthScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showMonthPicker by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -278,7 +281,7 @@ fun MonthScreen(
 
                     if (!uiState.aiApiKeyConfigured) {
                         Surface(
-                            onClick = onNavigateToSettings,
+                            onClick = { showApiKeyDialog = true },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -306,10 +309,9 @@ fun MonthScreen(
                             Text("AI 分析中...", style = MaterialTheme.typography.bodySmall)
                         }
                     } else if (uiState.aiAnalysisText.isNotBlank()) {
-                        Text(
+                        MarkdownText(
                             text = uiState.aiAnalysisText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedButton(onClick = { viewModel.requestAiAnalysis() }) {
@@ -356,6 +358,14 @@ fun MonthScreen(
                 showMonthPicker = false
             },
             onDismiss = { showMonthPicker = false }
+        )
+    }
+
+    // API Key dialog
+    if (showApiKeyDialog) {
+        ApiKeyDialog(
+            initialKey = "",
+            onDismiss = { showApiKeyDialog = false }
         )
     }
 }

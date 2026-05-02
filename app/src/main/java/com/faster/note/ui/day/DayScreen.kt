@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.faster.note.data.db.entity.ScheduleEntity
+import com.faster.note.ui.components.ApiKeyDialog
 import com.faster.note.ui.components.ScheduleBottomSheet
 import com.faster.note.ui.components.ScheduleCard
 import java.text.SimpleDateFormat
@@ -30,6 +32,8 @@ fun DayScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var editingSchedule by remember { mutableStateOf<ScheduleEntity?>(null) }
+    var showAiDialog by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
 
     val dateFormat = remember { SimpleDateFormat("M月d日 EEEE", Locale.CHINESE) }
 
@@ -137,19 +141,40 @@ fun DayScreen(
                 }
             }
 
-            // Add schedule button
-            FloatingActionButton(
-                onClick = {
-                    editingSchedule = null
-                    showBottomSheet = true
-                },
+            // FABs column
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .size(56.dp),
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.End
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加日程", modifier = Modifier.size(28.dp))
+                // AI analyze button
+                SmallFloatingActionButton(
+                    onClick = {
+                        if (uiState.aiApiKeyConfigured) {
+                            showAiDialog = true
+                            viewModel.requestDayAiAnalysis()
+                        } else {
+                            showApiKeyDialog = true
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = "AI 分析", modifier = Modifier.size(22.dp))
+                }
+
+                // Add schedule button
+                FloatingActionButton(
+                    onClick = {
+                        editingSchedule = null
+                        showBottomSheet = true
+                    },
+                    modifier = Modifier.size(56.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "添加日程", modifier = Modifier.size(28.dp))
+                }
             }
         }
     }
@@ -168,6 +193,70 @@ fun DayScreen(
                 showBottomSheet = false
             }) else null,
             onDismiss = { showBottomSheet = false }
+        )
+    }
+
+    // AI analysis dialog
+    if (showAiDialog) {
+        AlertDialog(
+            onDismissRequest = { showAiDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("今日 AI 分析")
+                }
+            },
+            text = {
+                Column {
+                    if (uiState.aiLoading) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Text("AI 分析中...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    } else if (uiState.aiError != null) {
+                        Text(
+                            text = uiState.aiError!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = { viewModel.requestDayAiAnalysis() }) {
+                            Text("重试")
+                        }
+                    } else if (uiState.aiAnalysisText.isNotBlank()) {
+                        Text(
+                            text = uiState.aiAnalysisText,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        Text(
+                            "暂无日程数据",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAiDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
+    // API Key dialog (when not configured yet)
+    if (showApiKeyDialog) {
+        ApiKeyDialog(
+            initialKey = "",
+            onDismiss = { showApiKeyDialog = false }
         )
     }
 }

@@ -1,2 +1,37 @@
-1.禁止在本地进行gradle构建，构建apk请统一采用github的mcp的actions的ci构建。
-2.开发请在本地的main进行。开发完毕后经审查无误再全部合并，接着推送到github仓库的main，然后监视ci构建状态，若失败，则拉取日志，分析报错，若成功，则输出总结信息
+# Development Rules
+
+## 1. Build Restrictions
+
+- **DO NOT** run any local Gradle commands that generate APKs
+- APKs must be built via **GitHub Actions CI** only
+
+## 2. Workflow
+
+- Develop directly on the local `main` branch
+- After review, `git push origin main` to GitHub
+- Listening CI build status:
+  - **Failed** — fetch logs, analyze error, propose fix
+  - **Success** — output summary (time, result)
+
+---
+
+# Coding Guidelines
+
+## Think Before Coding
+- State assumptions, ask if uncertain
+- Surface tradeoffs when multiple approaches exist
+- Push back when something can be simplified
+
+## Keep It Simple
+- Solve only what was asked, no extra features
+- No abstractions for single-use code
+- Don't handle impossible errors
+
+## Surgical Changes
+- Touch only what's necessary
+- Match existing style, don't refactor working code
+- Clean up orphans your changes created (unused imports/variables)
+
+## Goal-Driven
+- Define verification criteria, iterate until met
+- For multi-step tasks, state a brief plan first
