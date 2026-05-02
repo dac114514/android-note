@@ -86,8 +86,11 @@ fun ScheduleCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (!schedule.isAllDay && schedule.startTime != null) {
                                 val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                val timeText = if (schedule.endTime != null)
+                                    "${sdf.format(Date(schedule.startTime))} - ${sdf.format(Date(schedule.endTime))}"
+                                else sdf.format(Date(schedule.startTime))
                                 Text(
-                                    text = sdf.format(Date(schedule.startTime)),
+                                    text = timeText,
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
