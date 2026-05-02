@@ -1,36 +1,51 @@
 package com.faster.note.ui.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.faster.note.NoteApp
-import com.faster.note.util.BackupManager
+import com.faster.note.data.db.entity.CategoryEntity
+import com.faster.note.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.io.File
 
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repo = (application as NoteApp).noteRepository
-    val backupManager = BackupManager(application)
+data class SettingsUiState(
+    val categories: List<CategoryEntity> = emptyList(),
+    val isDarkMode: Boolean = false
+)
 
-    private val _backupFiles = MutableStateFlow<List<File>>(emptyList())
-    val backupFiles: StateFlow<List<File>> = _backupFiles.asStateFlow()
+class SettingsViewModel(
+    private val categoryRepository: CategoryRepository
+) : ViewModel() {
 
-    private val _exporting = MutableStateFlow(false)
-    val exporting: StateFlow<Boolean> = _exporting.asStateFlow()
+    private val _isDarkMode = MutableStateFlow(false)
+    val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
-    fun refreshBackupFiles() {
-        _backupFiles.value = backupManager.getBackupFiles()
+    val uiState: StateFlow<SettingsUiState> = combine(
+        categoryRepository.getAllCategories(),
+        _isDarkMode
+    ) { categories, darkMode ->
+        SettingsUiState(categories = categories, isDarkMode = darkMode)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
+
+    fun toggleDarkMode(enabled: Boolean) { _isDarkMode.value = enabled }
+
+    fun saveCategory(category: CategoryEntity) {
+        viewModelScope.launch {
+            if (category.id == 0L) categoryRepository.insert(category)
+            else categoryRepository.update(category)
+        }
     }
 
-    fun exportAllNotes() {
-        viewModelScope.launch {
-            _exporting.value = true
-            repo.allNotes.first().let { notes ->
-                backupManager.exportBackup(notes)
-            }
-            refreshBackupFiles()
-            _exporting.value = false
+    fun deleteCategory(category: CategoryEntity) {
+        viewModelScope.launch { categoryRepository.delete(category) }
+    }
+
+    class Factory(
+        private val categoryRepository: CategoryRepository
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return SettingsViewModel(categoryRepository) as T
         }
     }
 }
