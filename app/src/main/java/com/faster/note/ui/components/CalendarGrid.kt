@@ -32,10 +32,6 @@ fun CalendarGrid(
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
     val firstDayOfWeek = (cal.get(Calendar.DAY_OF_WEEK) + 6) % 7
 
-    val todayCal = Calendar.getInstance()
-    val today = todayCal.get(Calendar.DAY_OF_MONTH)
-    val isCurrentMonth = todayCal.get(Calendar.YEAR) == year && todayCal.get(Calendar.MONTH) + 1 == month
-
     Column(modifier = modifier) {
         Row(modifier = Modifier.fillMaxWidth()) {
             dayHeaders.forEach { day ->
@@ -61,8 +57,6 @@ fun CalendarGrid(
                     val isValid = day in 1..daysInMonth
                     val count = if (isValid) markedDateCounts[day] ?: 0 else 0
                     val isSelected = isValid && day == selectedDate
-                    val isToday = isValid && day == today && isCurrentMonth
-
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -82,19 +76,14 @@ fun CalendarGrid(
                             text = if (isValid) day.toString() else "",
                             modifier = Modifier.align(Alignment.Center),
                             fontSize = 15.sp,
-                            fontWeight = when {
-                                isSelected -> FontWeight.Bold
-                                isToday -> FontWeight.Bold
-                                else -> FontWeight.Normal
-                            },
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = when {
                                 isSelected -> MaterialTheme.colorScheme.onPrimary
-                                isToday -> MaterialTheme.colorScheme.primary
                                 col >= 5 -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                 else -> MaterialTheme.colorScheme.onSurface
                             }
                         )
-                        if (count > 0 && !isSelected) {
+                        if (count > 0) {
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)

@@ -33,6 +33,12 @@ fun DayScreen(
 
     val dateFormat = remember { SimpleDateFormat("M月d日 EEEE", Locale.CHINESE) }
 
+    val currentViewDateMillis = remember(uiState.year, uiState.month, uiState.day) {
+        Calendar.getInstance().apply {
+            set(uiState.year, uiState.month - 1, uiState.day)
+        }.timeInMillis
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -91,14 +97,20 @@ fun DayScreen(
                 if (uiState.schedules.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val dateDisplayText = remember(uiState.year, uiState.month, uiState.day) {
+                                val cal = Calendar.getInstance().apply {
+                                    set(uiState.year, uiState.month - 1, uiState.day)
+                                }
+                                SimpleDateFormat("M月d日 EEEE", Locale.CHINESE).format(cal.time)
+                            }
                             Text(
-                                text = "今天没有日程",
+                                text = "${dateDisplayText} 暂无日程",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "点击 + 添加第一个日程",
+                                text = "点击 + 添加日程",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
@@ -170,6 +182,7 @@ fun DayScreen(
         ScheduleBottomSheet(
             schedule = editingSchedule,
             categories = uiState.categories,
+            defaultDateMillis = currentViewDateMillis,
             onSave = { schedule ->
                 viewModel.saveSchedule(schedule)
                 showBottomSheet = false

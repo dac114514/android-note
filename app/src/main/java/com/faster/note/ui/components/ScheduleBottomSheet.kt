@@ -32,6 +32,7 @@ import com.faster.note.data.db.entity.ScheduleEntity
 fun ScheduleBottomSheet(
     schedule: ScheduleEntity?,
     categories: List<CategoryEntity>,
+    defaultDateMillis: Long = System.currentTimeMillis(),
     onSave: (ScheduleEntity) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit
@@ -54,7 +55,7 @@ fun ScheduleBottomSheet(
     var endMinute by remember { mutableIntStateOf(if (schedule?.endTime != null) {
         Calendar.getInstance().apply { timeInMillis = schedule.endTime }.get(Calendar.MINUTE)
     } else 0) }
-    var scheduleDate by remember { mutableStateOf(schedule?.date ?: Calendar.getInstance().timeInMillis) }
+    var scheduleDate by remember(schedule) { mutableStateOf(schedule?.date ?: defaultDateMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
 
