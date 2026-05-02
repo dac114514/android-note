@@ -4,6 +4,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// Workaround for AGP 9.0 legacy-kapt bug where KaptWithoutKotlincTask has empty classpath
+// https://issuetracker.google.com/issues/446889652
+tasks.withType<KaptWithoutKotlincTask>().configureEach {
+    kaptClasspath.from(configurations.named("kapt").map { it.incoming.artifactView { }.files })
+}
+
 android {
     namespace = "com.faster.note"
     compileSdk = 35
