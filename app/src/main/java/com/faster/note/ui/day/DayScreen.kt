@@ -137,43 +137,19 @@ fun DayScreen(
                 }
             }
 
-            // Navigation buttons
-            Row(
+            // Add schedule button
+            FloatingActionButton(
+                onClick = {
+                    editingSchedule = null
+                    showBottomSheet = true
+                },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .size(56.dp),
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
-                SmallFloatingActionButton(
-                    onClick = viewModel::goToPreviousDay,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一天")
-                }
-
-                FloatingActionButton(
-                    onClick = {
-                        editingSchedule = null
-                        showBottomSheet = true
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加日程")
-                }
-
-                SmallFloatingActionButton(
-                    onClick = viewModel::goToNextDay,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
-                }
+                Icon(Icons.Default.Add, contentDescription = "添加日程", modifier = Modifier.size(28.dp))
             }
         }
     }

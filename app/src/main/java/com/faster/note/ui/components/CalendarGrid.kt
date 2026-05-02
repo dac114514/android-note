@@ -63,8 +63,7 @@ fun CalendarGrid(
                             .aspectRatio(1f)
                             .then(
                                 if (isSelected) Modifier
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
                                 else Modifier
                             )
                             .then(
