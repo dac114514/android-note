@@ -9,7 +9,7 @@ import java.util.*
 data class MonthUiState(
     val year: Int,
     val month: Int,
-    val markedDates: Set<Int> = emptySet(),
+    val markedDateCounts: Map<Int, Int> = emptyMap(),
     val searchQuery: String = "",
     val totalCount: Int = 0,
     val completedCount: Int = 0
@@ -34,14 +34,14 @@ class MonthViewModel : ViewModel() {
 
             val mockSchedules = DayViewModel.mockSchedules()
             val filtered = mockSchedules.filter { it.date in monthStart..monthEnd }
-            val dates = filtered.map { s ->
+            val dateCounts = filtered.groupBy { s ->
                 Calendar.getInstance().apply { timeInMillis = s.date }.get(Calendar.DAY_OF_MONTH)
-            }.toSet()
+            }.mapValues { it.value.size }
 
             flowOf(MonthUiState(
                 year = year,
                 month = month,
-                markedDates = dates,
+                markedDateCounts = dateCounts,
                 totalCount = filtered.size,
                 completedCount = filtered.count { it.isCompleted }
             ))
@@ -52,5 +52,6 @@ class MonthViewModel : ViewModel() {
 
     fun goToPreviousMonth() { _currentMonth.value = _currentMonth.value.apply { add(Calendar.MONTH, -1) } }
     fun goToNextMonth() { _currentMonth.value = _currentMonth.value.apply { add(Calendar.MONTH, 1) } }
+    fun goToToday() { _currentMonth.value = Calendar.getInstance() }
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
 }

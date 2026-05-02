@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,26 +41,20 @@ fun MonthScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = viewModel::goToPreviousMonth) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一个月")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = viewModel::goToNextMonth) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一个月")
-                    }
                 }
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
             // Search bar
             OutlinedTextField(
                 value = uiState.searchQuery,
@@ -75,7 +70,7 @@ fun MonthScreen(
             CalendarGrid(
                 year = uiState.year,
                 month = uiState.month,
-                markedDates = uiState.markedDates,
+                markedDateCounts = uiState.markedDateCounts,
                 selectedDate = if (selectedDay > 0) selectedDay else null,
                 onDateSelected = { day ->
                     selectedDay = day
@@ -167,7 +162,42 @@ fun MonthScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(80.dp))
+            }
+
+            // Bottom navigation
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SmallFloatingActionButton(
+                    onClick = viewModel::goToPreviousMonth,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一个月")
+                }
+
+                TextButton(onClick = viewModel::goToToday) {
+                    Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("今天")
+                }
+
+                SmallFloatingActionButton(
+                    onClick = viewModel::goToNextMonth,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一个月")
+                }
+            }
         }
     }
 }

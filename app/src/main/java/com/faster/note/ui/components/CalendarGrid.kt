@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,7 +21,7 @@ import java.util.*
 fun CalendarGrid(
     year: Int,
     month: Int,
-    markedDates: Set<Int>,
+    markedDateCounts: Map<Int, Int>,
     selectedDate: Int?,
     onDateSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -58,7 +59,7 @@ fun CalendarGrid(
                 for (col in 0..6) {
                     val day = row * 7 + col - firstDayOfWeek + 1
                     val isValid = day in 1..daysInMonth
-                    val isMarked = isValid && day in markedDates
+                    val count = if (isValid) markedDateCounts[day] ?: 0 else 0
                     val isSelected = isValid && day == selectedDate
                     val isToday = isValid && day == today && isCurrentMonth
 
@@ -75,31 +76,38 @@ fun CalendarGrid(
                             .then(
                                 if (isValid) Modifier.clickable { onDateSelected(day) }
                                 else Modifier
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = if (isValid) day.toString() else "",
-                                fontSize = 15.sp,
-                                fontWeight = when {
-                                    isSelected -> FontWeight.Bold
-                                    isToday -> FontWeight.Bold
-                                    else -> FontWeight.Normal
-                                },
-                                color = when {
-                                    isSelected -> MaterialTheme.colorScheme.onPrimary
-                                    isToday -> MaterialTheme.colorScheme.primary
-                                    col >= 5 -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    else -> MaterialTheme.colorScheme.onSurface
-                                }
                             )
-                            if (isMarked && !isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(5.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text(
+                            text = if (isValid) day.toString() else "",
+                            modifier = Modifier.align(Alignment.Center),
+                            fontSize = 15.sp,
+                            fontWeight = when {
+                                isSelected -> FontWeight.Bold
+                                isToday -> FontWeight.Bold
+                                else -> FontWeight.Normal
+                            },
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                isToday -> MaterialTheme.colorScheme.primary
+                                col >= 5 -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                        if (count > 0 && !isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF5252)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (count > 9) "9+" else count.toString(),
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }

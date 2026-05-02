@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,7 +70,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(12.dp))
 
             // Category management section
-            var catExpanded by remember { mutableStateOf(true) }
+            var catExpanded by remember { mutableStateOf(false) }
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column {
                     Row(
@@ -200,10 +201,12 @@ fun SettingsScreen(
         val category = editingCategory
         var name by remember { mutableStateOf(category?.name ?: "") }
         var selectedColor by remember { mutableIntStateOf(category?.color ?: 0xFF1565C0.toInt()) }
+        var showCustomPicker by remember { mutableStateOf(false) }
         val presetColors = listOf(
-            0xFF1565C0.toInt(), 0xFFE53935.toInt(), 0xFF43A047.toInt(),
-            0xFFFB8C00.toInt(), 0xFF8E24AA.toInt(), 0xFF00ACC1.toInt(),
-            0xFF6D4C41.toInt(), 0xFF546E7A.toInt()
+            0xFF1565C0.toInt(), 0xFF1E88E5.toInt(), 0xFF42A5F5.toInt(), 0xFF90CAF9.toInt(),
+            0xFFE53935.toInt(), 0xFFEF5350.toInt(), 0xFFEC407A.toInt(), 0xFFAB47BC.toInt(),
+            0xFF43A047.toInt(), 0xFF66BB6A.toInt(), 0xFF26A69A.toInt(), 0xFF00ACC1.toInt(),
+            0xFFFB8C00.toInt(), 0xFFFFA726.toInt(), 0xFF8D6E63.toInt(), 0xFF78909C.toInt()
         )
 
         AlertDialog(
@@ -224,7 +227,10 @@ fun SettingsScreen(
                     Spacer(Modifier.height(12.dp))
                     Text("颜色", style = MaterialTheme.typography.labelMedium)
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         presetColors.forEach { c ->
                             Surface(
                                 onClick = { selectedColor = c },
@@ -234,6 +240,12 @@ fun SettingsScreen(
                                 border = if (c == selectedColor) BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface) else null
                             ) {}
                         }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { showCustomPicker = true }) {
+                        Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("自定义颜色")
                     }
                 }
             },
@@ -256,6 +268,68 @@ fun SettingsScreen(
                 }) { Text("取消") }
             }
         )
+
+        if (showCustomPicker) {
+            var hue by remember { mutableFloatStateOf(selectedColor.let {
+                val r = (it shr 16) and 0xFF; val g = (it shr 8) and 0xFF; val b = it and 0xFF
+                val cmax = maxOf(r, g, b); val cmin = minOf(r, g, b); val delta = cmax - cmin
+                if (delta == 0) 0f else when (cmax) {
+                    r -> ((((g - b).toFloat() / delta) % 6) * 60).let { if (it < 0) it + 360 else it }
+                    g -> (((b - r).toFloat() / delta) + 2) * 60
+                    else -> (((r - g).toFloat() / delta) + 4) * 60
+                }
+            }) }
+            var saturation by remember { mutableFloatStateOf(selectedColor.let {
+                val r = (it shr 16) and 0xFF; val g = (it shr 8) and 0xFF; val b = it and 0xFF
+                val cmax = maxOf(r, g, b); val cmin = minOf(r, g, b); val delta = cmax - cmin
+                if (cmax == 0) 0f else delta.toFloat() / cmax
+            }) }
+            var value by remember { mutableFloatStateOf(selectedColor.let {
+                maxOf((it shr 16) and 0xFF, (it shr 8) and 0xFF, it and 0xFF).toFloat() / 255f
+            }) }
+
+            AlertDialog(
+                onDismissRequest = { showCustomPicker = false },
+                title = { Text("自定义颜色") },
+                text = {
+                    Column {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = MaterialTheme.shapes.small,
+                            color = Color.hsv(hue, saturation, value)
+                        ) {}
+                        Spacer(Modifier.height(16.dp))
+                        Text("色相", style = MaterialTheme.typography.labelSmall)
+                        Slider(
+                            value = hue,
+                            onValueChange = { hue = it },
+                            valueRange = 0f..360f
+                        )
+                        Text("饱和度", style = MaterialTheme.typography.labelSmall)
+                        Slider(
+                            value = saturation,
+                            onValueChange = { saturation = it },
+                            valueRange = 0f..1f
+                        )
+                        Text("亮度", style = MaterialTheme.typography.labelSmall)
+                        Slider(
+                            value = value,
+                            onValueChange = { value = it },
+                            valueRange = 0f..1f
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        selectedColor = Color.hsv(hue, saturation, value).toArgb()
+                        showCustomPicker = false
+                    }) { Text("确定") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCustomPicker = false }) { Text("取消") }
+                }
+            )
+        }
     }
 }
 
