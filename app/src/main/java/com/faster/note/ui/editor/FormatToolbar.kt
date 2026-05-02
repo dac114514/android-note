@@ -7,9 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.faster.note.ui.editor.model.AlignmentType
 import com.faster.note.ui.editor.model.ParagraphType
@@ -32,58 +31,85 @@ fun FormatToolbar(
     onAlignmentClick: (AlignmentType) -> Unit
 ) {
     Surface(
-        tonalElevation = 2.dp,
+        tonalElevation = 3.dp,
+        shadowElevation = 2.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            FilterChip(
-                selected = state.spanStyle.isBold,
+            FilledTonalIconButton(
                 onClick = onToggleBold,
-                label = { Text("B", style = MaterialTheme.typography.titleSmall) }
-            )
-            FilterChip(
-                selected = state.spanStyle.isItalic,
-                onClick = onToggleItalic,
-                label = { Text("I", style = MaterialTheme.typography.titleSmall.copy(fontStyle = FontStyle.Italic)) }
-            )
-            FilterChip(
-                selected = state.spanStyle.isUnderline,
-                onClick = onToggleUnderline,
-                label = { Text("U", style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.Underline)) }
-            )
-            FilterChip(
-                selected = state.spanStyle.isStrikethrough,
-                onClick = onToggleStrikethrough,
-                label = { Text("S", style = MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.LineThrough)) }
-            )
-
-            Divider(Modifier.height(24.dp).padding(horizontal = 4.dp))
-
-            listOf(ParagraphType.H1 to "H1", ParagraphType.H2 to "H2", ParagraphType.H3 to "H3").forEach { (type, label) ->
-                FilterChip(
-                    selected = state.paragraphType == type,
-                    onClick = { onHeadingClick(if (state.paragraphType == type) ParagraphType.NORMAL else type) },
-                    label = { Text(label, style = MaterialTheme.typography.labelMedium) }
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (state.spanStyle.isBold)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
                 )
-            }
+            ) { Icon(Icons.Default.FormatBold, "粗体") }
 
-            Divider(Modifier.height(24.dp).padding(horizontal = 4.dp))
+            FilledTonalIconButton(
+                onClick = onToggleItalic,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (state.spanStyle.isItalic)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) { Icon(Icons.Default.FormatItalic, "斜体") }
+
+            FilledTonalIconButton(
+                onClick = onToggleUnderline,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (state.spanStyle.isUnderline)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) { Icon(Icons.Default.FormatUnderlined, "下划线") }
+
+            FilledTonalIconButton(
+                onClick = onToggleStrikethrough,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (state.spanStyle.isStrikethrough)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) { Icon(Icons.Default.FormatStrikethrough, "删除线") }
+
+            VerticalDivider(Modifier.height(28.dp).padding(horizontal = 4.dp))
 
             listOf(
-                AlignmentType.LEFT,
-                AlignmentType.CENTER,
-                AlignmentType.RIGHT
-            ).forEach { type ->
-                FilterChip(
-                    selected = state.alignment == type,
+                ParagraphType.H1 to "H1",
+                ParagraphType.H2 to "H2",
+                ParagraphType.H3 to "H3"
+            ).forEach { (type, label) ->
+                TextButton(
+                    onClick = { onHeadingClick(if (state.paragraphType == type) ParagraphType.NORMAL else type) },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = if (state.paragraphType == type)
+                            MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                ) { Text(label, style = MaterialTheme.typography.labelMedium) }
+            }
+
+            VerticalDivider(Modifier.height(28.dp).padding(horizontal = 4.dp))
+
+            listOf(
+                AlignmentType.LEFT to "L",
+                AlignmentType.CENTER to "C",
+                AlignmentType.RIGHT to "R"
+            ).forEach { (type, label) ->
+                FilledTonalIconButton(
                     onClick = { onAlignmentClick(type) },
-                    label = { Text(type.name.first().toString(), style = MaterialTheme.typography.labelMedium) }
-                )
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (state.alignment == type)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) { Text(label, style = MaterialTheme.typography.labelMedium) }
             }
         }
     }

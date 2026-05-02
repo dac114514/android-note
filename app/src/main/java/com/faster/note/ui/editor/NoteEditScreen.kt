@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,8 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.faster.note.ui.editor.model.AlignmentType
-import com.faster.note.ui.editor.model.ParagraphType
 import com.faster.note.ui.theme.NoteColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,10 +40,9 @@ fun NoteEditScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = {
-                        viewModel.saveNow()
-                        onBack()
-                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                    }
                 },
                 title = {
                     OutlinedTextField(
@@ -60,26 +58,28 @@ fun NoteEditScreen(
                     )
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.saveNow() }) {
+                        Icon(Icons.Default.Save, "保存")
+                    }
                     IconButton(onClick = {
-                        viewModel.updateColor(
-                            if (noteColor == null) NoteColors.random().value.toInt() else null
-                        )
-                    }) { Icon(Icons.Default.Palette, "颜色") }
+                        val currentIndex = noteColor?.let { color ->
+                            NoteColors.indexOfFirst { it.value.toInt() == color }
+                        } ?: -1
+                        val nextColor = if (currentIndex >= 0) {
+                            NoteColors[(currentIndex + 1) % NoteColors.size]
+                        } else {
+                            NoteColors[0]
+                        }
+                        viewModel.updateColor(nextColor.value.toInt())
+                    }) {
+                        Icon(Icons.Default.Palette, "颜色")
+                    }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            FormatToolbar(
-                state = editorState,
-                onToggleBold = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isBold = !editorState.spanStyle.isBold)) },
-                onToggleItalic = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isItalic = !editorState.spanStyle.isItalic)) },
-                onToggleUnderline = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isUnderline = !editorState.spanStyle.isUnderline)) },
-                onToggleStrikethrough = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isStrikethrough = !editorState.spanStyle.isStrikethrough)) },
-                onHeadingClick = { editorState = editorState.copy(paragraphType = it) },
-                onAlignmentClick = { editorState = editorState.copy(alignment = it) }
-            )
-
+            // Editor fills remaining space
             RichTextEditor(
                 textFieldValue = textFieldValue,
                 onValueChange = {
@@ -90,6 +90,7 @@ fun NoteEditScreen(
                 modifier = Modifier.weight(1f)
             )
 
+            // Color bar
             if (noteColor != null) {
                 Box(
                     modifier = Modifier
@@ -98,6 +99,17 @@ fun NoteEditScreen(
                         .background(Color(noteColor!!))
                 )
             }
+
+            // Format toolbar at bottom
+            FormatToolbar(
+                state = editorState,
+                onToggleBold = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isBold = !editorState.spanStyle.isBold)) },
+                onToggleItalic = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isItalic = !editorState.spanStyle.isItalic)) },
+                onToggleUnderline = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isUnderline = !editorState.spanStyle.isUnderline)) },
+                onToggleStrikethrough = { editorState = editorState.copy(spanStyle = editorState.spanStyle.copy(isStrikethrough = !editorState.spanStyle.isStrikethrough)) },
+                onHeadingClick = { editorState = editorState.copy(paragraphType = it) },
+                onAlignmentClick = { editorState = editorState.copy(alignment = it) }
+            )
         }
     }
 }
