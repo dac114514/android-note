@@ -20,10 +20,21 @@ fun MarkdownText(
     val lines = text.lines()
     Column(modifier = modifier) {
         for (line in lines) {
-            if (line.isBlank()) {
-                Spacer(Modifier.height(4.dp))
-            } else {
-                Text(
+            when {
+                line.isBlank() -> Spacer(Modifier.height(4.dp))
+                line.trimStart().startsWith("# ") -> Text(
+                    text = parseBold(line.trimStart().removePrefix("# ").trimEnd()),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                line.trimStart().startsWith("## ") -> Text(
+                    text = parseBold(line.trimStart().removePrefix("## ").trimEnd()),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+                else -> Text(
                     text = parseBold(line.trimEnd()),
                     style = MaterialTheme.typography.bodyMedium,
                     lineHeight = 22.sp,
