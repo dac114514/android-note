@@ -88,5 +88,11 @@ class MonthViewModel : ViewModel() {
         _currentMonth.value = Calendar.getInstance()
         clearSelection()
     }
+    fun goToYearMonth(year: Int, month: Int) {
+        _currentMonth.value = Calendar.getInstance().apply {
+            set(year, month - 1, 1)
+        }
+        clearSelection()
+    }
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
 }

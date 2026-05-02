@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -59,7 +60,13 @@ fun ScheduleBottomSheet(
     var showDatePicker by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { newValue ->
+            if (showDetails && newValue == SheetValue.Hidden) false
+            else true
+        }
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -71,6 +78,7 @@ fun ScheduleBottomSheet(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
                 .verticalScroll(rememberScrollState())
+                .nestedScroll(rememberNestedScrollInteropConnection())
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

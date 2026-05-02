@@ -37,6 +37,9 @@ fun AppNavHost(
         composable(Routes.MONTH) {
             MonthScreen(
                 viewModel = monthViewModel,
+                onDaySelected = { year, month, day ->
+                    dayViewModel.goToDate(year, month, day)
+                },
                 onNavigateToDay = { year, month, day ->
                     dayViewModel.goToDate(year, month, day)
                     navController.navigate(Routes.DAY) {

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,9 +27,11 @@ import java.util.*
 @Composable
 fun MonthScreen(
     viewModel: MonthViewModel,
+    onDaySelected: (Int, Int, Int) -> Unit,
     onNavigateToDay: (Int, Int, Int) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -39,11 +42,22 @@ fun MonthScreen(
                             text = "月视图",
                             style = MaterialTheme.typography.titleMedium
                         )
-                        Text(
-                            text = "${uiState.year}年 ${uiState.month}月",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        TextButton(
+                            onClick = { showMonthPicker = true },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${uiState.year}年 ${uiState.month}月",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "▼",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             )
@@ -76,7 +90,10 @@ fun MonthScreen(
                 month = uiState.month,
                 markedDateCounts = uiState.markedDateCounts,
                 selectedDate = uiState.selectedDay,
-                onDateSelected = { day -> viewModel.selectDay(day) },
+                onDateSelected = { day ->
+                    viewModel.selectDay(day)
+                    onDaySelected(uiState.year, uiState.month, day)
+                },
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
             Spacer(Modifier.height(8.dp))
@@ -113,7 +130,13 @@ fun MonthScreen(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
-                            if (uiState.selectedDayScheduleCount > 0) {
+                            if (uiState.selectedDaySchedules.isEmpty()) {
+                                Text(
+                                    text = "创建日程 >",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
                                 Text(
                                     text = "查看完整日程 >",
                                     style = MaterialTheme.typography.bodySmall,
@@ -260,36 +283,92 @@ fun MonthScreen(
             }
                 Spacer(Modifier.height(80.dp))
             }
+        }
+    }
 
-            // Bottom navigation
+    // Month picker dialog
+    if (showMonthPicker) {
+        MonthPickerDialog(
+            currentYear = uiState.year,
+            currentMonth = uiState.month,
+            onYearMonthSelected = { year, month ->
+                viewModel.goToYearMonth(year, month)
+                showMonthPicker = false
+            },
+            onDismiss = { showMonthPicker = false }
+        )
+    }
+}
+
+@Composable
+fun MonthPickerDialog(
+    currentYear: Int,
+    currentMonth: Int,
+    onYearMonthSelected: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var pickerYear by remember { mutableIntStateOf(currentYear) }
+    val months = listOf(
+        "1月", "2月", "3月", "4月", "5月", "6月",
+        "7月", "8月", "9月", "10月", "11月", "12月"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SmallFloatingActionButton(
-                    onClick = viewModel::goToPreviousMonth,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上一个月")
+                TextButton(onClick = { pickerYear-- }) {
+                    Text("<", fontSize = 18.sp)
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                SmallFloatingActionButton(
-                    onClick = viewModel::goToNextMonth,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "下一个月")
+                Text(
+                    text = "${pickerYear}年",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(onClick = { pickerYear++ }) {
+                    Text(">", fontSize = 18.sp)
                 }
             }
+        },
+        text = {
+            Column {
+                for (row in 0..3) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        for (col in 0..2) {
+                            val monthIndex = row * 3 + col
+                            val monthNum = monthIndex + 1
+                            val isCurrent = pickerYear == currentYear && monthNum == currentMonth
+
+                            TextButton(
+                                onClick = { onYearMonthSelected(pickerYear, monthNum) },
+                                modifier = Modifier.size(80.dp, 44.dp),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (isCurrent) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurface,
+                                    containerColor = if (isCurrent) MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Text(
+                                    text = months[monthIndex],
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
         }
-    }
+    )
 }
