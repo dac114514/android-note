@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
@@ -17,13 +18,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 import com.faster.note.data.db.entity.CategoryEntity
@@ -60,12 +58,6 @@ fun ScheduleBottomSheet(
     var showDatePicker by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
 
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        delay(300)
-        focusRequester.requestFocus()
-    }
-
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -79,11 +71,72 @@ fun ScheduleBottomSheet(
                 .padding(bottom = 32.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = if (isEdit) "编辑日程" else "添加日程",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isEdit) "编辑日程" else "添加日程",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (isEdit && onDelete != null) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("删除")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                Button(
+                    onClick = {
+                        if (title.isNotBlank()) {
+                            val startMillis = if (isAllDay) null else {
+                                Calendar.getInstance().apply {
+                                    timeInMillis = scheduleDate
+                                    set(Calendar.HOUR_OF_DAY, startHour)
+                                    set(Calendar.MINUTE, startMinute)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                            }
+                            val endMillis = if (isAllDay) null else {
+                                Calendar.getInstance().apply {
+                                    timeInMillis = scheduleDate
+                                    set(Calendar.HOUR_OF_DAY, endHour)
+                                    set(Calendar.MINUTE, endMinute)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                            }
+                            onSave(ScheduleEntity(
+                                id = schedule?.id ?: 0,
+                                title = title.trim(),
+                                startTime = startMillis,
+                                endTime = endMillis,
+                                isAllDay = isAllDay,
+                                categoryId = selectedCategoryId,
+                                location = location.ifBlank { null },
+                                notes = notes.ifBlank { null },
+                                date = scheduleDate,
+                                createdAt = schedule?.createdAt ?: System.currentTimeMillis(),
+                                updatedAt = System.currentTimeMillis()
+                            ))
+                        }
+                    },
+                    enabled = title.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("保存")
+                }
+            }
             Spacer(Modifier.height(20.dp))
 
             // === Required: Title ===
@@ -98,7 +151,7 @@ fun ScheduleBottomSheet(
                 onValueChange = { title = it },
                 placeholder = { Text("日程标题") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
 
@@ -288,66 +341,6 @@ fun ScheduleBottomSheet(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isEdit && onDelete != null) {
-                    TextButton(
-                        onClick = onDelete,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("删除")
-                    }
-                    Spacer(Modifier.weight(1f))
-                }
-                OutlinedButton(onClick = onDismiss) { Text("取消") }
-                Spacer(Modifier.width(12.dp))
-                Button(
-                    onClick = {
-                        if (title.isNotBlank()) {
-                            val startMillis = if (isAllDay) null else {
-                                Calendar.getInstance().apply {
-                                    timeInMillis = scheduleDate
-                                    set(Calendar.HOUR_OF_DAY, startHour)
-                                    set(Calendar.MINUTE, startMinute)
-                                    set(Calendar.SECOND, 0)
-                                    set(Calendar.MILLISECOND, 0)
-                                }.timeInMillis
-                            }
-                            val endMillis = if (isAllDay) null else {
-                                Calendar.getInstance().apply {
-                                    timeInMillis = scheduleDate
-                                    set(Calendar.HOUR_OF_DAY, endHour)
-                                    set(Calendar.MINUTE, endMinute)
-                                    set(Calendar.SECOND, 0)
-                                    set(Calendar.MILLISECOND, 0)
-                                }.timeInMillis
-                            }
-                            onSave(ScheduleEntity(
-                                id = schedule?.id ?: 0,
-                                title = title.trim(),
-                                startTime = startMillis,
-                                endTime = endMillis,
-                                isAllDay = isAllDay,
-                                categoryId = selectedCategoryId,
-                                location = location.ifBlank { null },
-                                notes = notes.ifBlank { null },
-                                date = scheduleDate,
-                                createdAt = schedule?.createdAt ?: System.currentTimeMillis(),
-                                updatedAt = System.currentTimeMillis()
-                            ))
-                        }
-                    },
-                    enabled = title.isNotBlank()
-                ) { Text("保存") }
-            }
         }
     }
 }
