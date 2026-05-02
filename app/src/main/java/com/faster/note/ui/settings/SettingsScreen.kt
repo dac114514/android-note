@@ -59,7 +59,7 @@ fun SettingsScreen(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.width(16.dp))
-                    Text("深色模式", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Text("深色模式", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Switch(checked = uiState.isDarkMode, onCheckedChange = {
                         viewModel.toggleDarkMode(it)
                         onToggleDarkMode(it)
