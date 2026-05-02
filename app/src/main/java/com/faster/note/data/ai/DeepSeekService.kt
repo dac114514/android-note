@@ -15,14 +15,16 @@ object DeepSeekService {
     private const val BASE_URL = "https://api.deepseek.com/v1/chat/completions"
     private const val MODEL = "deepseek-v4-flash"
 
-    suspend fun requestAnalysis(apiKey: String, userPrompt: String): String =
-        withContext(Dispatchers.IO) {
-            val systemPrompt = "你是一个日程分析助手。用户会提供一个月内的日程列表，请从以下角度分析：" +
-                    "1. 时间分配概况（各类日程占比）" +
-                    "2. 完成情况分析（已完成/未完成）" +
-                    "3. 发现的问题或建议（如时间安排不合理等）" +
-                    "4. 下个月改进建议。" +
-                    "请用中文回复，保持简洁有条理，200字左右。"
+    suspend fun requestAnalysis(
+        apiKey: String,
+        userPrompt: String,
+        systemPrompt: String = "你是一个日程分析助手。用户会提供一个月内的日程列表，请从以下角度分析：" +
+                "1. 时间分配概况（各类日程占比）" +
+                "2. 完成情况分析（已完成/未完成）" +
+                "3. 发现的问题或建议（如时间安排不合理等）" +
+                "4. 下个月改进建议。" +
+                "请用中文回复，保持简洁有条理，200字左右。"
+    ): String = withContext(Dispatchers.IO) {
 
             val body = JSONObject().apply {
                 put("model", MODEL)

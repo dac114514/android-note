@@ -1,6 +1,7 @@
 package com.faster.note.ui.month
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.faster.note.data.db.entity.ScheduleEntity
 import com.faster.note.ui.components.ApiKeyDialog
 import com.faster.note.ui.components.CalendarGrid
 import com.faster.note.ui.components.MarkdownText
@@ -345,6 +347,51 @@ fun MonthScreen(
             }
                 Spacer(Modifier.height(80.dp))
             }
+
+            // Search results floating panel
+            if (uiState.searchQuery.isNotBlank()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 60.dp)
+                        .heightIn(max = 300.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 8.dp,
+                    tonalElevation = 2.dp
+                ) {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        if (uiState.searchResults.isEmpty()) {
+                            Text(
+                                text = "未找到匹配日程",
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            uiState.searchResults.forEach { result ->
+                                SearchResultItem(
+                                    result = result,
+                                    onClick = {
+                                        viewModel.updateSearchQuery("")
+                                        val cal = Calendar.getInstance().apply {
+                                            timeInMillis = result.schedule.date
+                                        }
+                                        onNavigateToDay(
+                                            cal.get(Calendar.YEAR),
+                                            cal.get(Calendar.MONTH) + 1,
+                                            result.dayOfMonth
+                                        )
+                                    }
+                                )
+                                if (result != uiState.searchResults.last()) {
+                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -367,6 +414,58 @@ fun MonthScreen(
             initialKey = "",
             onDismiss = { showApiKeyDialog = false }
         )
+    }
+}
+
+@Composable
+private fun SearchResultItem(
+    result: SearchResult,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = result.schedule.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = result.dateLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (result.timeLabel.isNotBlank()) {
+                    Text(
+                        text = result.timeLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (result.categoryName.isNotBlank()) {
+                    Text(
+                        text = result.categoryName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (result.schedule.isCompleted) {
+                    Text(
+                        text = "✓ 已完成",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
     }
 }
 

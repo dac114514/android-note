@@ -144,7 +144,8 @@ class DayViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val result = DeepSeekService.requestAnalysis(apiKey, prompt)
+                val daySystemPrompt = "你是一个日程助手。用户会提供一天的日程列表，请简要分析今天的时间安排和完成情况，给出概括性评价。请用中文回复，保持简洁，100字左右。"
+                val result = DeepSeekService.requestAnalysis(apiKey, prompt, systemPrompt = daySystemPrompt)
                 _aiAnalysisText.value = result
             } catch (e: Exception) {
                 _aiError.value = e.message ?: "分析失败"

@@ -13,11 +13,21 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+
+data class SearchResult(
+    val schedule: ScheduleEntity,
+    val categoryName: String,
+    val dateLabel: String,
+    val timeLabel: String,
+    val dayOfMonth: Int
+)
+
 data class MonthUiState(
     val year: Int,
     val month: Int,
     val markedDateCounts: Map<Int, Int> = emptyMap(),
     val searchQuery: String = "",
+    val searchResults: List<SearchResult> = emptyList(),
     val totalCount: Int = 0,
     val completedCount: Int = 0,
     val selectedDay: Int? = null,
@@ -83,11 +93,37 @@ class MonthViewModel : ViewModel() {
                 .sortedWith(compareBy<ScheduleEntity> { !it.isAllDay }.thenBy { it.startTime ?: Long.MAX_VALUE })
         } else emptyList()
 
+        val searchResults = if (query.isBlank()) emptyList()
+        else {
+            val sdfDate = SimpleDateFormat("M月d日", Locale.CHINESE)
+            val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val matching = allSchedules.filter { it.title.contains(query, ignoreCase = true) }
+            matching.map { s ->
+                val cal2 = Calendar.getInstance().apply { timeInMillis = s.date }
+                val cat = categories.find { it.id == s.categoryId }
+                val timeLabel = when {
+                    s.isAllDay -> "全天"
+                    s.startTime != null && s.endTime != null ->
+                        "${sdfTime.format(Date(s.startTime))}-${sdfTime.format(Date(s.endTime))}"
+                    s.startTime != null -> sdfTime.format(Date(s.startTime))
+                    else -> ""
+                }
+                SearchResult(
+                    schedule = s,
+                    categoryName = cat?.name ?: "",
+                    dateLabel = sdfDate.format(Date(s.date)),
+                    timeLabel = timeLabel,
+                    dayOfMonth = cal2.get(Calendar.DAY_OF_MONTH)
+                )
+            }
+        }
+
         MonthUiState(
             year = year,
             month = month,
             markedDateCounts = dateCounts,
             searchQuery = query,
+            searchResults = searchResults,
             totalCount = filtered.size,
             completedCount = filtered.count { it.isCompleted },
             selectedDay = selectedDay,
