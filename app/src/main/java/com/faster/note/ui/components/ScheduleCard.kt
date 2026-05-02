@@ -45,7 +45,7 @@ fun ScheduleCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 4.dp),
+                .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.Top
         ) {
             // Color strip on left
@@ -53,8 +53,8 @@ fun ScheduleCard(
                 Box(
                     modifier = Modifier
                         .width(4.dp)
-                        .height(64.dp)
-                        .clip(shape)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
                         .background(categoryColor)
                 )
             }

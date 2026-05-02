@@ -35,9 +35,35 @@ fun DayScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("日程") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val cal = remember(uiState.year, uiState.month, uiState.day) {
+                            Calendar.getInstance().apply {
+                                set(uiState.year, uiState.month - 1, uiState.day)
+                            }
+                        }
+                        Text(
+                            text = dateFormat.format(cal.time),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "${uiState.year}年${uiState.month}月",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = viewModel::goToPreviousDay) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一天")
+                    }
+                },
                 actions = {
+                    IconButton(onClick = viewModel::goToNextDay) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
+                    }
                     TextButton(onClick = viewModel::goToToday) {
                         Icon(Icons.Default.Today, contentDescription = "今天", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
@@ -60,33 +86,6 @@ fun DayScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Date navigation bar
-            Surface(tonalElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = viewModel::goToPreviousDay) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一天")
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        val cal = Calendar.getInstance()
-                        cal.set(uiState.year, uiState.month - 1, uiState.day)
-                        Text(
-                            text = dateFormat.format(cal.time),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp
-                        )
-                    }
-                    IconButton(onClick = viewModel::goToNextDay) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
-                    }
-                }
-            }
-
             // Progress bar
             if (uiState.totalCount > 0) {
                 LinearProgressIndicator(

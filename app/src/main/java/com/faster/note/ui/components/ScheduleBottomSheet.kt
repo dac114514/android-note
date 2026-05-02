@@ -4,15 +4,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.*
 import com.faster.note.data.db.entity.CategoryEntity
 import com.faster.note.data.db.entity.ScheduleEntity
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +48,14 @@ fun ScheduleBottomSheet(
     var endMinute by remember { mutableIntStateOf(if (schedule?.endTime != null) {
         Calendar.getInstance().apply { timeInMillis = schedule.endTime }.get(Calendar.MINUTE)
     } else 0) }
+    var scheduleDate by remember { mutableStateOf(schedule?.date ?: Calendar.getInstance().timeInMillis) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(300)
+        focusRequester.requestFocus()
+    }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -61,13 +76,58 @@ fun ScheduleBottomSheet(
             )
             Spacer(Modifier.height(16.dp))
 
+            // Basic info section
+            Text(
+                text = "基本信息",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text("标题 *") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
             )
+            Spacer(Modifier.height(12.dp))
+
+            // Date picker field
+            OutlinedTextField(
+                value = {
+                    val cal = Calendar.getInstance().apply { timeInMillis = scheduleDate }
+                    SimpleDateFormat("yyyy年M月d日 EEEE", Locale.CHINESE).format(cal.time)
+                }(),
+                onValueChange = {},
+                label = { Text("日期") },
+                readOnly = true,
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.DateRange, contentDescription = "选择日期")
+                    }
+                }
+            )
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = scheduleDate
+                )
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { scheduleDate = it }
+                            showDatePicker = false
+                        }) { Text("确认") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
             Spacer(Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -77,50 +137,95 @@ fun ScheduleBottomSheet(
             Spacer(Modifier.height(12.dp))
 
             if (!isAllDay) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "开始时间",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = "%02d".format(startHour),
                         onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) startHour = h } },
-                        label = { Text("开始") },
+                        label = { Text("时") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true
                     )
-                    Text(":", modifier = Modifier.align(Alignment.CenterVertically))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        ":",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(4.dp))
                     OutlinedTextField(
                         value = "%02d".format(startMinute),
                         onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) startMinute = m } },
+                        label = { Text("分") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "结束时间",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = "%02d".format(endHour),
                         onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) endHour = h } },
-                        label = { Text("结束") },
+                        label = { Text("时") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true
                     )
-                    Text(":", modifier = Modifier.align(Alignment.CenterVertically))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        ":",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(4.dp))
                     OutlinedTextField(
                         value = "%02d".format(endMinute),
                         onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) endMinute = m } },
+                        label = { Text("分") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true
                     )
                 }
                 Spacer(Modifier.height(12.dp))
             }
 
-            Text("分类", style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(8.dp))
+
+            // Category section
+            Text(
+                text = "分类",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.height(8.dp))
             CategoryPicker(
                 categories = categories,
                 selectedId = selectedCategoryId,
                 onSelect = { selectedCategoryId = it }
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
+
+            // Details section
+            Text(
+                text = "详情",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = location,
@@ -139,35 +244,58 @@ fun ScheduleBottomSheet(
                 maxLines = 4,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isEdit && onDelete != null) {
-                    OutlinedButton(
+                    TextButton(
                         onClick = onDelete,
-                        colors = ButtonDefaults.outlinedButtonColors(
+                        colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         )
-                    ) { Text("删除") }
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("删除")
+                    }
+                    Spacer(Modifier.weight(1f))
                 }
-                Spacer(Modifier.weight(1f))
                 OutlinedButton(onClick = onDismiss) { Text("取消") }
+                Spacer(Modifier.width(12.dp))
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
+                            val startMillis = if (isAllDay) null else {
+                                Calendar.getInstance().apply {
+                                    timeInMillis = scheduleDate
+                                    set(Calendar.HOUR_OF_DAY, startHour)
+                                    set(Calendar.MINUTE, startMinute)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                            }
+                            val endMillis = if (isAllDay) null else {
+                                Calendar.getInstance().apply {
+                                    timeInMillis = scheduleDate
+                                    set(Calendar.HOUR_OF_DAY, endHour)
+                                    set(Calendar.MINUTE, endMinute)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                            }
                             onSave(ScheduleEntity(
                                 id = schedule?.id ?: 0,
                                 title = title.trim(),
-                                startTime = null, // simplified for MVP
-                                endTime = null,
+                                startTime = startMillis,
+                                endTime = endMillis,
                                 isAllDay = isAllDay,
                                 categoryId = selectedCategoryId,
                                 location = location.ifBlank { null },
                                 notes = notes.ifBlank { null },
-                                date = schedule?.date ?: Calendar.getInstance().timeInMillis,
+                                date = scheduleDate,
                                 createdAt = schedule?.createdAt ?: System.currentTimeMillis(),
                                 updatedAt = System.currentTimeMillis()
                             ))

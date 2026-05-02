@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.faster.note.ui.components.CalendarGrid
@@ -27,7 +26,31 @@ fun MonthScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("月视图") })
+            CenterAlignedTopAppBar(
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "月视图",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "${uiState.year}年 ${uiState.month}月",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = viewModel::goToPreviousMonth) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一个月")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = viewModel::goToNextMonth) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一个月")
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -46,28 +69,6 @@ fun MonthScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
-
-            // Month navigation
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = viewModel::goToPreviousMonth) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一个月")
-                }
-                Text(
-                    text = "${uiState.year}年 ${uiState.month}月",
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-                IconButton(onClick = viewModel::goToNextMonth) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一个月")
-                }
-            }
 
             // Calendar grid
             CalendarGrid(

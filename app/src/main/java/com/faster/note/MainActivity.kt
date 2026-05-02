@@ -88,7 +88,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    Surface(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    ) {
                         AppNavHost(
                             navController = navController,
                             dayViewModel = dayViewModel,
