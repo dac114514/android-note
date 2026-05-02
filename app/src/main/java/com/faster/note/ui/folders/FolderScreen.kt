@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +27,11 @@ fun FolderScreen(
     val tags by viewModel.tags.collectAsState()
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var showNewTagDialog by remember { mutableStateOf(false) }
+    var noteCounts by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+
+    LaunchedEffect(folders) {
+        noteCounts = folders.associate { it.id to viewModel.getNoteCount(it.id) }
+    }
 
     Scaffold(
         topBar = {
@@ -47,8 +54,35 @@ fun FolderScreen(
                     }
                 }
             }
-            items(folders) { folder ->
-                FolderCard(folder = folder, onClick = { onBack() })
+            if (folders.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Folder, null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "还没有文件夹",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(folders) { folder ->
+                    FolderCard(
+                        folder = folder,
+                        noteCount = noteCounts[folder.id] ?: 0,
+                        onClick = { onBack() }
+                    )
+                }
             }
 
             item {
@@ -63,8 +97,31 @@ fun FolderScreen(
                     }
                 }
             }
-            item {
-                TagCloud(tags = tags, onDeleteTag = { viewModel.deleteTag(it) })
+            if (tags.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Label, null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "还没有标签",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                item {
+                    TagCloud(tags = tags, onDeleteTag = { viewModel.deleteTag(it) })
+                }
             }
         }
     }

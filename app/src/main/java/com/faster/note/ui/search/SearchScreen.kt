@@ -10,7 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.faster.note.data.db.entity.NoteEntity
@@ -45,12 +49,16 @@ fun SearchScreen(
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
             items(results) { note ->
-                SearchResultItem(note = note, onClick = { onOpenNote(note.id) })
+                SearchResultItem(note = note, query = query, onClick = { onOpenNote(note.id) })
             }
             if (query.isNotBlank() && results.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(32.dp)) {
-                        Text("未找到相关笔记", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "未找到相关笔记",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -59,10 +67,56 @@ fun SearchScreen(
 }
 
 @Composable
-private fun SearchResultItem(note: NoteEntity, onClick: () -> Unit) {
+private fun SearchResultItem(note: NoteEntity, query: String, onClick: () -> Unit) {
+    val plainContent = note.content.replace(Regex("<[^>]*>"), "")
     ListItem(
-        headlineContent = { Text(note.title.ifBlank { "无标题" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(note.content.replace(Regex("<[^>]*>"), "").take(100), maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        headlineContent = {
+            Text(
+                text = buildAnnotatedString {
+                    val title = note.title.ifBlank { "无标题" }
+                    highlightText(this, title, query, MaterialTheme.colorScheme.primary)
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        supportingContent = {
+            Text(
+                text = buildAnnotatedString {
+                    val snippet = plainContent.take(100)
+                    highlightText(this, snippet, query, MaterialTheme.colorScheme.primary)
+                },
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
         modifier = Modifier.clickable(onClick = onClick)
     )
+}
+
+private fun highlightText(
+    builder: androidx.compose.ui.text.AnnotatedString.Builder,
+    text: String,
+    query: String,
+    highlightColor: Color
+) {
+    if (query.isBlank()) {
+        builder.append(text)
+        return
+    }
+    val lowerText = text.lowercase()
+    val lowerQuery = query.lowercase()
+    var start = 0
+    while (true) {
+        val index = lowerText.indexOf(lowerQuery, start)
+        if (index < 0) {
+            builder.append(text.substring(start))
+            break
+        }
+        builder.append(text.substring(start, index))
+        builder.withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.Bold)) {
+            builder.append(text.substring(index, index + query.length))
+        }
+        start = index + query.length
+    }
 }

@@ -19,6 +19,9 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
     val tags: StateFlow<List<TagEntity>> = tagRepo.allTags
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    suspend fun getNoteCount(folderId: Long): Int =
+        folderRepo.getNoteCountForFolder(folderId).first()
+
     fun createFolder(name: String, color: Int) = viewModelScope.launch {
         folderRepo.saveFolder(FolderEntity(name = name, color = color))
     }

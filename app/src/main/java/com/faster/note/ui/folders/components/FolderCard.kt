@@ -16,6 +16,7 @@ import com.faster.note.data.db.entity.FolderEntity
 @Composable
 fun FolderCard(
     folder: FolderEntity,
+    noteCount: Int = 0,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -45,6 +46,12 @@ fun FolderCard(
             text = folder.name,
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "($noteCount)",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
