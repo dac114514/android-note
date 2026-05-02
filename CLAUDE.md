@@ -1,16 +1,28 @@
-# Note App
+**严格遵守**以下所规则
 
-Android note-taking app with Jetpack Compose + Material Design 3.
+## 1. 构建规则
 
-## Tech
-- Kotlin 100%, Jetpack Compose, Material Design 3
-- Room for local persistence
-- Jetpack Navigation Compose
-- MVVM architecture
+**禁止本地构建 APK**：
+- 不要在本地运行任何生成 APK 的 Gradle 命令。
+- 所有 APK 必须通过 **GitHub Actions CI**（MCP Workflow）构建。
 
-## Conventions
-- Package: com.faster.note
-- Commit style: conventional commits (feat:, fix:, refactor:, docs:, chore:)
-- All UI in Compose, no XML layouts
-- ViewModel per screen, Repository per entity group
-- Format on save before commit
+**本地只允许运行**：
+- 轻量静态检查（如代码格式检查、lint）
+
+## 2. 开发与推送流程
+
+1. **直接在本地 main 分支** 写代码。
+2. 写完后进行自我检查
+3. 使用以下快捷命令提交并推送：
+   - `git done "修改描述"` 
+4. 推送完成后，**立即查看** GitHub 的 CI 构建状态。
+5. 根据结果处理：
+   - **构建失败**：读取日志，分析问题，给出修复建议。
+   - **构建成功**：给出构建总结（时间、结果等）。
+
+## 3. 注意事项
+- 不需要额外创建分支，也不需要 merge 操作。
+- 直接在 main 分支开发和推送。
+- 每次修改后必须走 CI 验证。
+- 禁止运行未经许可的Gradle命令
+
