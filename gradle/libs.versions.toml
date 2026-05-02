@@ -38,4 +38,5 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
