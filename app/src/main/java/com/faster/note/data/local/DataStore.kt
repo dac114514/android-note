@@ -1,6 +1,7 @@
 package com.faster.note.data.local
 
 import android.content.Context
+import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import com.faster.note.data.repository.ScheduleRepository
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,7 @@ object DataStore {
         CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
             ScheduleRepository.loadAll()
             CategoryRepository.loadAll()
+            AiConfigRepository.loadAll()
         }
     }
 }

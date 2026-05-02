@@ -46,6 +46,12 @@ fun AppNavHost(
                         popUpTo(Routes.DAY) { inclusive = true }
                         launchSingleTop = true
                     }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Routes.SETTINGS) {
+                        popUpTo(Routes.MONTH) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 }
             )
         }

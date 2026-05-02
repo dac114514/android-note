@@ -3,12 +3,14 @@ package com.faster.note.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.faster.note.data.db.entity.CategoryEntity
+import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.*
 
 data class SettingsUiState(
     val categories: List<CategoryEntity> = emptyList(),
-    val isDarkMode: Boolean = false
+    val isDarkMode: Boolean = false,
+    val apiKey: String = ""
 )
 
 class SettingsViewModel : ViewModel() {
@@ -19,9 +21,10 @@ class SettingsViewModel : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
         CategoryRepository.categories,
-        _isDarkMode
-    ) { categories, darkMode ->
-        SettingsUiState(categories = categories, isDarkMode = darkMode)
+        _isDarkMode,
+        AiConfigRepository.apiKey
+    ) { categories, darkMode, apiKey ->
+        SettingsUiState(categories = categories, isDarkMode = darkMode, apiKey = apiKey)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
 
     fun toggleDarkMode(enabled: Boolean) { _isDarkMode.value = enabled }
@@ -32,5 +35,9 @@ class SettingsViewModel : ViewModel() {
 
     fun deleteCategory(category: CategoryEntity) {
         CategoryRepository.deleteCategory(category)
+    }
+
+    fun saveApiKey(key: String) {
+        AiConfigRepository.saveApiKey(key)
     }
 }

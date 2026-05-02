@@ -28,7 +28,8 @@ import java.util.*
 fun MonthScreen(
     viewModel: MonthViewModel,
     onDaySelected: (Int, Int, Int) -> Unit,
-    onNavigateToDay: (Int, Int, Int) -> Unit
+    onNavigateToDay: (Int, Int, Int) -> Unit,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showMonthPicker by remember { mutableStateOf(false) }
@@ -257,7 +258,7 @@ fun MonthScreen(
             }
             Spacer(Modifier.height(16.dp))
 
-            // AI Summary placeholder
+            // AI Summary card
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -271,14 +272,73 @@ fun MonthScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(Modifier.width(16.dp))
-                        Text("AI 分析（即将推出）", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("AI 分析", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "接入 AI 后将自动生成月度效率报告、时间分配分析等。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    if (!uiState.aiApiKeyConfigured) {
+                        Surface(
+                            onClick = onNavigateToSettings,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "未配置 API Key，点击配置",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    ">",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    } else if (uiState.aiLoading) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Text("AI 分析中...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    } else if (uiState.aiAnalysisText.isNotBlank()) {
+                        Text(
+                            text = uiState.aiAnalysisText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = { viewModel.requestAiAnalysis() }) {
+                            Text("重新分析")
+                        }
+                    } else {
+                        Text(
+                            "点击下方按钮，将本月日程发送给 AI 生成分析报告",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { viewModel.requestAiAnalysis() }) {
+                            Text("开始分析")
+                        }
+                    }
+
+                    if (uiState.aiError != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = uiState.aiError!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedButton(onClick = { viewModel.requestAiAnalysis() }) {
+                            Text("重试")
+                        }
+                    }
                 }
             }
                 Spacer(Modifier.height(80.dp))

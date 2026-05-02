@@ -149,10 +149,33 @@ fun SettingsScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(Modifier.width(16.dp))
-                        Column {
-                            Text("AI 设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text("后续版本将支持接入 AI API 进行智能分析", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("AI 设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    var editingKey by remember(uiState.apiKey) { mutableStateOf(uiState.apiKey) }
+                    OutlinedTextField(
+                        value = editingKey,
+                        onValueChange = { editingKey = it },
+                        label = { Text("DeepSeek API Key") },
+                        placeholder = { Text("输入你的 API Key") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        trailingIcon = {
+                            if (editingKey.isNotEmpty()) {
+                                IconButton(onClick = { editingKey = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "清除")
+                                }
+                            }
                         }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { viewModel.saveApiKey(editingKey) },
+                        modifier = Modifier.align(Alignment.End),
+                        enabled = editingKey != uiState.apiKey
+                    ) {
+                        Text("保存")
                     }
                 }
             }
