@@ -180,19 +180,19 @@ fun ScheduleBottomSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { showDetails = !showDetails }
-                    .padding(vertical = 12.dp),
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "更多详情",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
                 Icon(
                     imageVector = if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (showDetails) "收起" else "展开",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
             AnimatedVisibility(

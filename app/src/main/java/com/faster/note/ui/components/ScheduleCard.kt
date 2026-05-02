@@ -62,7 +62,7 @@ fun ScheduleCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(12.dp)
+                    .padding(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
@@ -75,7 +75,7 @@ fun ScheduleCard(
                         Text(
                             text = schedule.title,
                             fontWeight = FontWeight.Medium,
-                            fontSize = 15.sp,
+                            style = MaterialTheme.typography.bodyLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = if (schedule.isCompleted)
