@@ -30,7 +30,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            NoteAppTheme {
+            var isDarkMode by remember { mutableStateOf(false) }
+            NoteAppTheme(darkTheme = isDarkMode) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
@@ -69,7 +70,11 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     Surface(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                        NoteNavHost(navController = navController)
+                        NoteNavHost(
+                            navController = navController,
+                            isDarkMode = isDarkMode,
+                            onToggleDarkMode = { isDarkMode = it }
+                        )
                     }
                 }
             }

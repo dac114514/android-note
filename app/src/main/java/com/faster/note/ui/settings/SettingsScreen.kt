@@ -16,6 +16,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    isDarkMode: Boolean,
+    onToggleDarkMode: (Boolean) -> Unit,
     viewModel: SettingsViewModel = viewModel()
 ) {
     val exporting by viewModel.exporting.collectAsState()
@@ -75,8 +77,27 @@ fun SettingsScreen(
             item {
                 ListItem(
                     headlineContent = { Text("深色模式") },
-                    supportingContent = { Text("跟随系统设置") },
-                    trailingContent = { Switch(checked = false, onCheckedChange = {}) }
+                    supportingContent = { Text(if (isDarkMode) "已开启" else "已关闭") },
+                    trailingContent = {
+                        Switch(checked = isDarkMode, onCheckedChange = onToggleDarkMode)
+                    }
+                )
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("关于", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("版本") },
+                    supportingContent = { Text("1.0.0") }
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("主题") },
+                    supportingContent = { Text("Material Design 3 蓝色主题") }
                 )
             }
         }

@@ -24,7 +24,11 @@ object Routes {
 }
 
 @Composable
-fun NoteNavHost(navController: NavHostController) {
+fun NoteNavHost(
+    navController: NavHostController,
+    isDarkMode: Boolean = false,
+    onToggleDarkMode: (Boolean) -> Unit = {}
+) {
     NavHost(navController = navController, startDestination = Routes.NOTES) {
         composable(Routes.NOTES) {
             NoteListScreen(
@@ -50,7 +54,11 @@ fun NoteNavHost(navController: NavHostController) {
             SearchScreen(onOpenNote = { id -> navController.navigate(Routes.noteEdit(id)) })
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                isDarkMode = isDarkMode,
+                onToggleDarkMode = onToggleDarkMode
+            )
         }
     }
 }
