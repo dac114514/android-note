@@ -36,20 +36,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val app = application as ScheduleApp
-
         setContent {
             var isDarkMode by remember { mutableStateOf(false) }
 
-            val dayViewModel: DayViewModel = viewModel(
-                factory = DayViewModel.Factory(app.scheduleRepository, app.categoryRepository)
-            )
-            val monthViewModel: MonthViewModel = viewModel(
-                factory = MonthViewModel.Factory(app.scheduleRepository)
-            )
-            val settingsViewModel: SettingsViewModel = viewModel(
-                factory = SettingsViewModel.Factory(app.categoryRepository)
-            )
+            val dayViewModel: DayViewModel = viewModel()
+            val monthViewModel: MonthViewModel = viewModel()
+            val settingsViewModel: SettingsViewModel = viewModel()
 
             ScheduleAppTheme(darkTheme = isDarkMode) {
                 val navController = rememberNavController()

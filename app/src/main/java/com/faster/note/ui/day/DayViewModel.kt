@@ -1,14 +1,10 @@
 package com.faster.note.ui.day
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.faster.note.data.db.entity.CategoryEntity
 import com.faster.note.data.db.entity.ScheduleEntity
-import com.faster.note.data.repository.CategoryRepository
-import com.faster.note.data.repository.ScheduleRepository
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.util.*
 
 data class DayUiState(
@@ -21,21 +17,25 @@ data class DayUiState(
     val totalCount: Int = 0
 )
 
-class DayViewModel(
-    private val scheduleRepository: ScheduleRepository,
-    private val categoryRepository: CategoryRepository
-) : ViewModel() {
+class DayViewModel : ViewModel() {
 
     private val _currentDate = MutableStateFlow(Calendar.getInstance())
+    private val _schedules = MutableStateFlow(mockSchedules())
+    private val _categories = MutableStateFlow(mockCategories())
+
     val uiState: StateFlow<DayUiState> = combine(
         _currentDate.flatMapLatest { cal ->
-            scheduleRepository.getSchedulesForDate(
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH) + 1,
-                cal.get(Calendar.DAY_OF_MONTH)
-            )
+            val dateStart = Calendar.getInstance().apply {
+                set(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val dateEnd = dateStart + 86400000L - 1
+            _schedules.map { list ->
+                list.filter { it.date in dateStart..dateEnd }
+                    .sortedWith(compareBy<ScheduleEntity> { !it.isAllDay }.thenBy { it.startTime ?: Long.MAX_VALUE })
+            }
         },
-        categoryRepository.getAllCategories()
+        _categories
     ) { schedules, categories ->
         DayUiState(
             year = _currentDate.value.get(Calendar.YEAR),
@@ -48,50 +48,53 @@ class DayViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DayUiState(0, 0, 0))
 
-    fun goToPreviousDay() {
-        _currentDate.value = _currentDate.value.apply { add(Calendar.DAY_OF_MONTH, -1) }
-    }
-
-    fun goToNextDay() {
-        _currentDate.value = _currentDate.value.apply { add(Calendar.DAY_OF_MONTH, 1) }
-    }
-
-    fun goToToday() {
-        _currentDate.value = Calendar.getInstance()
-    }
-
+    fun goToPreviousDay() { _currentDate.value = _currentDate.value.apply { add(Calendar.DAY_OF_MONTH, -1) } }
+    fun goToNextDay() { _currentDate.value = _currentDate.value.apply { add(Calendar.DAY_OF_MONTH, 1) } }
+    fun goToToday() { _currentDate.value = Calendar.getInstance() }
     fun goToDate(year: Int, month: Int, day: Int) {
-        _currentDate.value = Calendar.getInstance().apply {
-            set(year, month - 1, day)
-        }
+        _currentDate.value = Calendar.getInstance().apply { set(year, month - 1, day) }
     }
 
     fun toggleCompleted(schedule: ScheduleEntity) {
-        viewModelScope.launch {
-            scheduleRepository.update(schedule.copy(isCompleted = !schedule.isCompleted))
+        _schedules.value = _schedules.value.map {
+            if (it.id == schedule.id) it.copy(isCompleted = !it.isCompleted) else it
         }
     }
 
     fun saveSchedule(schedule: ScheduleEntity) {
-        viewModelScope.launch {
-            if (schedule.id == 0L) scheduleRepository.insert(schedule)
-            else scheduleRepository.update(schedule)
+        _schedules.value = if (schedule.id == 0L) {
+            val newId = (_schedules.value.maxOfOrNull { it.id } ?: 0) + 1
+            _schedules.value + schedule.copy(id = newId, createdAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis())
+        } else {
+            _schedules.value.map { if (it.id == schedule.id) schedule else it }
         }
     }
 
     fun deleteSchedule(id: Long) {
-        viewModelScope.launch {
-            scheduleRepository.delete(id)
-        }
+        _schedules.value = _schedules.value.filter { it.id != id }
     }
 
-    class Factory(
-        private val scheduleRepository: ScheduleRepository,
-        private val categoryRepository: CategoryRepository
-    ) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return DayViewModel(scheduleRepository, categoryRepository) as T
+    companion object {
+        fun mockCategories(): List<CategoryEntity> = listOf(
+            CategoryEntity(id = 1, name = "工作", color = 0xFF1565C0.toInt(), isPreset = true, sortOrder = 1),
+            CategoryEntity(id = 2, name = "个人", color = 0xFF43A047.toInt(), isPreset = true, sortOrder = 2),
+            CategoryEntity(id = 3, name = "学习", color = 0xFFE53935.toInt(), isPreset = true, sortOrder = 3),
+            CategoryEntity(id = 4, name = "健康", color = 0xFFFB8C00.toInt(), isPreset = true, sortOrder = 4),
+        )
+
+        fun mockSchedules(): List<ScheduleEntity> {
+            val today = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            return listOf(
+                ScheduleEntity(id = 1, title = "团队站会", startTime = today + 9 * 3600000L, endTime = today + 9 * 3600000L + 1800000L, categoryId = 1, date = today, isCompleted = true),
+                ScheduleEntity(id = 2, title = "午休", startTime = today + 12 * 3600000L, endTime = today + 13 * 3600000L, categoryId = 2, date = today),
+                ScheduleEntity(id = 3, title = "学习 Jetpack Compose", startTime = today + 20 * 3600000L, endTime = today + 21 * 3600000L + 1800000L, categoryId = 3, date = today),
+                ScheduleEntity(id = 4, title = "项目评审", startTime = today + 14 * 3600000L, endTime = today + 15 * 3600000L + 1800000L, categoryId = 1, date = today + 86400000L),
+                ScheduleEntity(id = 5, title = "健身", startTime = today + 18 * 3600000L, endTime = today + 19 * 3600000L, categoryId = 4, date = today + 86400000L),
+                ScheduleEntity(id = 6, title = "周末出游", isAllDay = true, categoryId = 2, date = today + 2 * 86400000L),
+            )
         }
     }
 }
