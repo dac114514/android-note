@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -42,10 +43,11 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (bottomBarVisible) {
                             NavigationBar {
+                                data class NavItem(val route: String, val label: String, val selectedIcon: ImageVector, val unselectedIcon: ImageVector)
                                 val items = listOf(
-                                    Triple(Routes.NOTES, "笔记", Icons.Filled.Home, Icons.Outlined.Home),
-                                    Triple(Routes.FOLDERS, "文件夹", Icons.Filled.CreateNewFolder, Icons.Outlined.CreateNewFolder),
-                                    Triple(Routes.SETTINGS, "设置", Icons.Filled.Settings, Icons.Outlined.Settings),
+                                    NavItem(Routes.NOTES, "笔记", Icons.Filled.Home, Icons.Outlined.Home),
+                                    NavItem(Routes.FOLDERS, "文件夹", Icons.Filled.CreateNewFolder, Icons.Outlined.CreateNewFolder),
+                                    NavItem(Routes.SETTINGS, "设置", Icons.Filled.Settings, Icons.Outlined.Settings),
                                 )
                                 items.forEach { (route, label, selectedIcon, unselectedIcon) ->
                                     val selected = currentDestination?.hierarchy?.any { it.route == route } == true

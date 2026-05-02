@@ -75,17 +75,15 @@ fun FormatToolbar(
             Divider(Modifier.height(24.dp).padding(horizontal = 4.dp))
 
             listOf(
-                AlignmentType.LEFT to FormatAlignLeft,
-                AlignmentType.CENTER to FormatAlignCenter,
-                AlignmentType.RIGHT to FormatAlignRight
-            ).forEach { (type, icon) ->
-                IconButton(onClick = { onAlignmentClick(type) }) {
-                    Icon(
-                        icon,
-                        contentDescription = type.name,
-                        tint = if (state.alignment == type) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                AlignmentType.LEFT,
+                AlignmentType.CENTER,
+                AlignmentType.RIGHT
+            ).forEach { type ->
+                FilterChip(
+                    selected = state.alignment == type,
+                    onClick = { onAlignmentClick(type) },
+                    label = { Text(type.name.first().toString(), style = MaterialTheme.typography.labelMedium) }
+                )
             }
         }
     }
