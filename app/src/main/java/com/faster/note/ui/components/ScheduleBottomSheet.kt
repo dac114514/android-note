@@ -1,5 +1,9 @@
 package com.faster.note.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -7,14 +11,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -50,6 +58,7 @@ fun ScheduleBottomSheet(
     } else 0) }
     var scheduleDate by remember { mutableStateOf(schedule?.date ?: Calendar.getInstance().timeInMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDetails by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -72,36 +81,42 @@ fun ScheduleBottomSheet(
         ) {
             Text(
                 text = if (isEdit) "编辑日程" else "添加日程",
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // Basic info section
+            // === Required: Title ===
             Text(
-                text = "基本信息",
+                text = "标题 *",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(Modifier.height(8.dp))
-
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("标题 *") },
+                placeholder = { Text("日程标题") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Date picker field
+            // === Required: Date ===
+            Text(
+                text = "日期",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = {
                     val cal = Calendar.getInstance().apply { timeInMillis = scheduleDate }
                     SimpleDateFormat("yyyy年M月d日 EEEE", Locale.CHINESE).format(cal.time)
                 }(),
                 onValueChange = {},
-                label = { Text("日期") },
                 readOnly = true,
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
                     IconButton(onClick = { showDatePicker = true }) {
@@ -130,86 +145,25 @@ fun ScheduleBottomSheet(
             }
             Spacer(Modifier.height(12.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text("全天事件", modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
+            // === All-day toggle ===
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "全天事件",
+                    style = MaterialTheme.typography.bodyLarge
+                )
                 Switch(checked = isAllDay, onCheckedChange = { isAllDay = it })
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
 
-            if (!isAllDay) {
-                Text(
-                    text = "开始时间",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = "%02d".format(startHour),
-                        onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) startHour = h } },
-                        label = { Text("时") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        ":",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    OutlinedTextField(
-                        value = "%02d".format(startMinute),
-                        onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) startMinute = m } },
-                        label = { Text("分") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "结束时间",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = "%02d".format(endHour),
-                        onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) endHour = h } },
-                        label = { Text("时") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        ":",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    OutlinedTextField(
-                        value = "%02d".format(endMinute),
-                        onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) endMinute = m } },
-                        label = { Text("分") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Category section
+            // === Category ===
             Text(
                 text = "分类",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
             CategoryPicker(
@@ -219,31 +173,121 @@ fun ScheduleBottomSheet(
             )
             Spacer(Modifier.height(16.dp))
 
-            // Details section
-            Text(
-                text = "详情",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
 
-            OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
-                label = { Text("地点") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
+            // === Collapsible: More details ===
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDetails = !showDetails }
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "更多详情",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Icon(
+                    imageVector = if (showDetails) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (showDetails) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            AnimatedVisibility(
+                visible = showDetails,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column {
+                    if (!isAllDay) {
+                        Text(
+                            text = "开始时间",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = "%02d".format(startHour),
+                                onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) startHour = h } },
+                                label = { Text("时") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(80.dp),
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                ":",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            OutlinedTextField(
+                                value = "%02d".format(startMinute),
+                                onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) startMinute = m } },
+                                label = { Text("分") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(80.dp),
+                                singleLine = true
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = "结束时间",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = "%02d".format(endHour),
+                                onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) endHour = h } },
+                                label = { Text("时") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(80.dp),
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                ":",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            OutlinedTextField(
+                                value = "%02d".format(endMinute),
+                                onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) endMinute = m } },
+                                label = { Text("分") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(80.dp),
+                                singleLine = true
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    }
 
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = { Text("备注") },
-                minLines = 2,
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
+                    OutlinedTextField(
+                        value = location,
+                        onValueChange = { location = it },
+                        label = { Text("地点") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = { Text("备注") },
+                        minLines = 2,
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
 
             Row(

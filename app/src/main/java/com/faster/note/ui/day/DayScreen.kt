@@ -55,15 +55,7 @@ fun DayScreen(
                         )
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = viewModel::goToPreviousDay) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一天")
-                    }
-                },
                 actions = {
-                    IconButton(onClick = viewModel::goToNextDay) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
-                    }
                     TextButton(onClick = viewModel::goToToday) {
                         Icon(Icons.Default.Today, contentDescription = "今天", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
@@ -72,87 +64,121 @@ fun DayScreen(
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                editingSchedule = null
-                showBottomSheet = true
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "添加日程")
-            }
-        }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Progress bar
-            if (uiState.totalCount > 0) {
-                LinearProgressIndicator(
-                    progress = { uiState.completedCount.toFloat() / uiState.totalCount },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                Text(
-                    text = "已完成 ${uiState.completedCount}/${uiState.totalCount}",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-            }
+            // Main content
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Progress bar
+                if (uiState.totalCount > 0) {
+                    LinearProgressIndicator(
+                        progress = { uiState.completedCount.toFloat() / uiState.totalCount },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    Text(
+                        text = "已完成 ${uiState.completedCount}/${uiState.totalCount}",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
 
-            // Schedule list
-            if (uiState.schedules.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "今天没有日程",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = "点击 + 添加第一个日程",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
+                // Schedule list
+                if (uiState.schedules.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "今天没有日程",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "点击 + 添加第一个日程",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.schedules, key = { it.id }) { schedule ->
+                            val category = uiState.categories.find { it.id == schedule.categoryId }
+                            ScheduleCard(
+                                schedule = schedule,
+                                category = category,
+                                onToggleCompleted = { viewModel.toggleCompleted(schedule) },
+                                onClick = {
+                                    editingSchedule = schedule
+                                    showBottomSheet = true
+                                }
+                            )
+                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            }
+
+            // Navigation buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SmallFloatingActionButton(
+                    onClick = viewModel::goToPreviousDay,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
                 ) {
-                    items(uiState.schedules, key = { it.id }) { schedule ->
-                        val category = uiState.categories.find { it.id == schedule.categoryId }
-                        ScheduleCard(
-                            schedule = schedule,
-                            category = category,
-                            onToggleCompleted = { viewModel.toggleCompleted(schedule) },
-                            onClick = {
-                                editingSchedule = schedule
-                                showBottomSheet = true
-                            }
-                        )
-                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一天")
+                }
+
+                FloatingActionButton(
+                    onClick = {
+                        editingSchedule = null
+                        showBottomSheet = true
+                    },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "添加日程")
+                }
+
+                SmallFloatingActionButton(
+                    onClick = viewModel::goToNextDay,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
                 }
             }
         }
+    }
 
-        if (showBottomSheet) {
-            ScheduleBottomSheet(
-                schedule = editingSchedule,
-                categories = uiState.categories,
-                onSave = { schedule ->
-                    viewModel.saveSchedule(schedule)
-                    showBottomSheet = false
-                },
-                onDelete = if (editingSchedule != null) ({
-                    viewModel.deleteSchedule(editingSchedule!!.id)
-                    showBottomSheet = false
-                }) else null,
-                onDismiss = { showBottomSheet = false }
-            )
-        }
+    if (showBottomSheet) {
+        ScheduleBottomSheet(
+            schedule = editingSchedule,
+            categories = uiState.categories,
+            onSave = { schedule ->
+                viewModel.saveSchedule(schedule)
+                showBottomSheet = false
+            },
+            onDelete = if (editingSchedule != null) ({
+                viewModel.deleteSchedule(editingSchedule!!.id)
+                showBottomSheet = false
+            }) else null,
+            onDismiss = { showBottomSheet = false }
+        )
     }
 }

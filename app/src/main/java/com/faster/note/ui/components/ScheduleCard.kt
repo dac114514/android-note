@@ -33,6 +33,7 @@ fun ScheduleCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .clip(shape)
             .clickable(onClick = onClick),
         shape = shape,
         colors = CardDefaults.cardColors(
@@ -54,7 +55,6 @@ fun ScheduleCard(
                     modifier = Modifier
                         .width(4.dp)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
                         .background(categoryColor)
                 )
             }
