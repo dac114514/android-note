@@ -1,5 +1,6 @@
 package com.faster.note
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,37 +8,56 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.faster.note.ui.navigation.NoteNavHost
+import com.faster.note.ui.about.AboutActivity
+import com.faster.note.ui.day.DayViewModel
+import com.faster.note.ui.month.MonthViewModel
+import com.faster.note.ui.navigation.AppNavHost
 import com.faster.note.ui.navigation.Routes
-import com.faster.note.ui.theme.NoteAppTheme
+import com.faster.note.ui.settings.SettingsViewModel
+import com.faster.note.ui.theme.ScheduleAppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val app = application as ScheduleApp
+
         setContent {
             var isDarkMode by remember { mutableStateOf(false) }
-            NoteAppTheme(darkTheme = isDarkMode) {
+
+            val dayViewModel: DayViewModel = viewModel(
+                factory = DayViewModel.Factory(app.scheduleRepository, app.categoryRepository)
+            )
+            val monthViewModel: MonthViewModel = viewModel(
+                factory = MonthViewModel.Factory(app.scheduleRepository)
+            )
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModel.Factory(app.categoryRepository)
+            )
+
+            ScheduleAppTheme(darkTheme = isDarkMode) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
                 val bottomBarVisible = currentDestination?.route in listOf(
-                    Routes.NOTES, Routes.FOLDERS, Routes.SETTINGS
+                    Routes.DAY, Routes.MONTH, Routes.SETTINGS
                 )
 
                 Scaffold(
@@ -46,8 +66,8 @@ class MainActivity : ComponentActivity() {
                             NavigationBar {
                                 data class NavItem(val route: String, val label: String, val selectedIcon: ImageVector, val unselectedIcon: ImageVector)
                                 val items = listOf(
-                                    NavItem(Routes.NOTES, "笔记", Icons.Filled.Home, Icons.Outlined.Home),
-                                    NavItem(Routes.FOLDERS, "文件夹", Icons.Filled.CreateNewFolder, Icons.Outlined.CreateNewFolder),
+                                    NavItem(Routes.DAY, "日视图", Icons.Filled.Today, Icons.Outlined.Today),
+                                    NavItem(Routes.MONTH, "月视图", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth),
                                     NavItem(Routes.SETTINGS, "设置", Icons.Filled.Settings, Icons.Outlined.Settings),
                                 )
                                 items.forEach { (route, label, selectedIcon, unselectedIcon) ->
@@ -70,10 +90,16 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     Surface(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                        NoteNavHost(
+                        AppNavHost(
                             navController = navController,
+                            dayViewModel = dayViewModel,
+                            monthViewModel = monthViewModel,
+                            settingsViewModel = settingsViewModel,
                             isDarkMode = isDarkMode,
-                            onToggleDarkMode = { isDarkMode = it }
+                            onToggleDarkMode = { isDarkMode = it },
+                            onOpenAbout = {
+                                startActivity(Intent(this@MainActivity, AboutActivity::class.java))
+                            }
                         )
                     }
                 }
