@@ -127,9 +127,9 @@ fun SettingsScreen(
         var name by remember { mutableStateOf(category?.name ?: "") }
         var selectedColor by remember { mutableIntStateOf(category?.color ?: 0xFF1565C0.toInt()) }
         val presetColors = listOf(
-            0xFF1565C0.toInt(), 0xFFE53935, 0xFF43A047,
-            0xFFFB8C00, 0xFF8E24AA, 0xFF00ACC1,
-            0xFF6D4C41, 0xFF546E7A
+            0xFF1565C0.toInt(), 0xFFE53935.toInt(), 0xFF43A047.toInt(),
+            0xFFFB8C00.toInt(), 0xFF8E24AA.toInt(), 0xFF00ACC1.toInt(),
+            0xFF6D4C41.toInt(), 0xFF546E7A.toInt()
         )
 
         AlertDialog(

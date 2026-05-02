@@ -24,6 +24,7 @@ class AboutActivity : ComponentActivity() {
             ScheduleAppTheme {
                 Scaffold(
                     topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
                         TopAppBar(
                             title = { Text("关于") },
                             navigationIcon = {
