@@ -27,6 +27,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.faster.note.data.local.DataStore
 import com.faster.note.ui.about.AboutActivity
 import com.faster.note.ui.day.DayViewModel
 import com.faster.note.ui.month.MonthViewModel
@@ -38,6 +39,7 @@ import com.faster.note.ui.theme.ScheduleAppTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DataStore.init(applicationContext)
         enableEdgeToEdge()
 
         setContent {

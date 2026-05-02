@@ -2,7 +2,7 @@ package com.faster.note.ui.month
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.faster.note.ui.day.DayViewModel
+import com.faster.note.data.repository.ScheduleRepository
 import kotlinx.coroutines.flow.*
 import java.util.*
 
@@ -21,34 +21,33 @@ class MonthViewModel : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
 
     val uiState: StateFlow<MonthUiState> = combine(
-        _currentMonth.flatMapLatest { cal ->
-            val year = cal.get(Calendar.YEAR)
-            val month = cal.get(Calendar.MONTH) + 1
-            val monthStart = Calendar.getInstance().apply {
-                set(year, month - 1, 1, 0, 0, 0); set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-            val monthEnd = Calendar.getInstance().apply {
-                set(year, month - 1, 1, 0, 0, 0); set(Calendar.MILLISECOND, 0)
-                add(Calendar.MONTH, 1); add(Calendar.MILLISECOND, -1)
-            }.timeInMillis
-
-            val mockSchedules = DayViewModel.mockSchedules()
-            val filtered = mockSchedules.filter { it.date in monthStart..monthEnd }
-            val dateCounts = filtered.groupBy { s ->
-                Calendar.getInstance().apply { timeInMillis = s.date }.get(Calendar.DAY_OF_MONTH)
-            }.mapValues { it.value.size }
-
-            flowOf(MonthUiState(
-                year = year,
-                month = month,
-                markedDateCounts = dateCounts,
-                totalCount = filtered.size,
-                completedCount = filtered.count { it.isCompleted }
-            ))
-        },
+        _currentMonth,
+        ScheduleRepository.schedules,
         _searchQuery
-    ) { state, query -> state.copy(searchQuery = query) }
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthUiState(0, 0))
+    ) { cal, allSchedules, query ->
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH) + 1
+        val monthStart = Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val monthEnd = Calendar.getInstance().apply {
+            set(year, month - 1, 1, 0, 0, 0); set(Calendar.MILLISECOND, 0)
+            add(Calendar.MONTH, 1); add(Calendar.MILLISECOND, -1)
+        }.timeInMillis
+        val filtered = allSchedules.filter { it.date in monthStart..monthEnd }
+        val dateCounts = filtered.groupBy { s ->
+            Calendar.getInstance().apply { timeInMillis = s.date }.get(Calendar.DAY_OF_MONTH)
+        }.mapValues { it.value.size }
+
+        MonthUiState(
+            year = year,
+            month = month,
+            markedDateCounts = dateCounts,
+            searchQuery = query,
+            totalCount = filtered.size,
+            completedCount = filtered.count { it.isCompleted }
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthUiState(0, 0))
 
     fun goToPreviousMonth() { _currentMonth.value = _currentMonth.value.apply { add(Calendar.MONTH, -1) } }
     fun goToNextMonth() { _currentMonth.value = _currentMonth.value.apply { add(Calendar.MONTH, 1) } }
