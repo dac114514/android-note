@@ -1,23 +1,37 @@
 package com.faster.note.data.db.dao
 
-import androidx.room.*
+import com.faster.note.data.db.DatabaseHelper
 import com.faster.note.data.db.entity.FolderEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
 
-@Dao
-interface FolderDao {
-    @Query("SELECT * FROM folders ORDER BY name ASC")
-    fun getAllFolders(): Flow<List<FolderEntity>>
+class FolderDao(private val db: DatabaseHelper) {
 
-    @Query("SELECT * FROM folders WHERE id = :id")
-    suspend fun getFolderById(id: Long): FolderEntity?
+    private val notifier = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 64)
 
-    @Insert
-    suspend fun insertFolder(folder: FolderEntity): Long
+    fun getAllFolders(): Flow<List<FolderEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getAllFolders() }
+        .flowOn(Dispatchers.IO)
 
-    @Update
-    suspend fun updateFolder(folder: FolderEntity)
+    suspend fun getFolderById(id: Long): FolderEntity? = withContext(Dispatchers.IO) {
+        db.getFolderById(id)
+    }
 
-    @Delete
-    suspend fun deleteFolder(folder: FolderEntity)
+    suspend fun insertFolder(folder: FolderEntity): Long = withContext(Dispatchers.IO) {
+        db.insertFolder(folder).also { notifier.tryEmit(Unit) }
+    }
+
+    suspend fun updateFolder(folder: FolderEntity) = withContext(Dispatchers.IO) {
+        db.updateFolder(folder).also { notifier.tryEmit(Unit) }
+    }
+
+    suspend fun deleteFolder(folder: FolderEntity) = withContext(Dispatchers.IO) {
+        db.deleteFolder(folder).also { notifier.tryEmit(Unit) }
+    }
 }

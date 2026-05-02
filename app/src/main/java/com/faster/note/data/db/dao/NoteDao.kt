@@ -1,51 +1,66 @@
 package com.faster.note.data.db.dao
 
-import androidx.room.*
+import com.faster.note.data.db.DatabaseHelper
 import com.faster.note.data.db.entity.NoteEntity
 import com.faster.note.data.db.entity.NoteTagCrossRef
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
 
-@Dao
-interface NoteDao {
-    @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
-    fun getAllNotes(): Flow<List<NoteEntity>>
+class NoteDao(private val db: DatabaseHelper) {
 
-    @Query("SELECT * FROM notes WHERE folderId = :folderId ORDER BY updatedAt DESC")
-    fun getNotesByFolder(folderId: Long): Flow<List<NoteEntity>>
+    private val notifier = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 64)
 
-    @Query("""
-        SELECT n.* FROM notes n
-        INNER JOIN note_tag_cross_ref c ON n.id = c.noteId
-        WHERE c.tagId = :tagId
-        ORDER BY n.updatedAt DESC
-    """)
-    fun getNotesByTag(tagId: Long): Flow<List<NoteEntity>>
+    fun getAllNotes(): Flow<List<NoteEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getAllNotes() }
+        .flowOn(Dispatchers.IO)
 
-    @Query("SELECT * FROM notes WHERE isFavorite = 1 ORDER BY updatedAt DESC")
-    fun getFavoriteNotes(): Flow<List<NoteEntity>>
+    fun getNotesByFolder(folderId: Long): Flow<List<NoteEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getNotesByFolder(folderId) }
+        .flowOn(Dispatchers.IO)
 
-    @Query("SELECT * FROM notes WHERE id = :id")
-    suspend fun getNoteById(id: Long): NoteEntity?
+    fun getNotesByTag(tagId: Long): Flow<List<NoteEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getNotesByTag(tagId) }
+        .flowOn(Dispatchers.IO)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNote(note: NoteEntity): Long
+    fun getFavoriteNotes(): Flow<List<NoteEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getFavoriteNotes() }
+        .flowOn(Dispatchers.IO)
 
-    @Update
-    suspend fun updateNote(note: NoteEntity)
+    fun getTagIdsForNote(noteId: Long): Flow<List<Long>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getTagIdsForNote(noteId) }
+        .flowOn(Dispatchers.IO)
 
-    @Delete
-    suspend fun deleteNote(note: NoteEntity)
+    suspend fun getNoteById(id: Long): NoteEntity? = withContext(Dispatchers.IO) {
+        db.getNoteById(id)
+    }
 
-    @Query("DELETE FROM notes WHERE id = :id")
-    suspend fun deleteNoteById(id: Long)
+    suspend fun insertNote(note: NoteEntity): Long = withContext(Dispatchers.IO) {
+        db.insertNote(note).also { notifier.tryEmit(Unit) }
+    }
 
-    // Tag associations
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun addTagToNote(crossRef: NoteTagCrossRef)
+    suspend fun updateNote(note: NoteEntity) = withContext(Dispatchers.IO) {
+        db.updateNote(note).also { notifier.tryEmit(Unit) }
+    }
 
-    @Query("DELETE FROM note_tag_cross_ref WHERE noteId = :noteId")
-    suspend fun removeAllTagsFromNote(noteId: Long)
+    suspend fun deleteNoteById(id: Long) = withContext(Dispatchers.IO) {
+        db.deleteNoteById(id).also { notifier.tryEmit(Unit) }
+    }
 
-    @Query("SELECT tagId FROM note_tag_cross_ref WHERE noteId = :noteId")
-    fun getTagIdsForNote(noteId: Long): Flow<List<Long>>
+    suspend fun addTagToNote(crossRef: NoteTagCrossRef) = withContext(Dispatchers.IO) {
+        db.addTagToNote(crossRef).also { notifier.tryEmit(Unit) }
+    }
+
+    suspend fun removeAllTagsFromNote(noteId: Long) = withContext(Dispatchers.IO) {
+        db.removeAllTagsFromNote(noteId).also { notifier.tryEmit(Unit) }
+    }
 }

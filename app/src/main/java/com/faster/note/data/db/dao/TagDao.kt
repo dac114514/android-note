@@ -1,26 +1,38 @@
 package com.faster.note.data.db.dao
 
-import androidx.room.*
+import com.faster.note.data.db.DatabaseHelper
 import com.faster.note.data.db.entity.TagEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
 
-@Dao
-interface TagDao {
-    @Query("SELECT * FROM tags ORDER BY name ASC")
-    fun getAllTags(): Flow<List<TagEntity>>
+class TagDao(private val db: DatabaseHelper) {
 
-    @Query("SELECT * FROM tags WHERE id = :id")
-    suspend fun getTagById(id: Long): TagEntity?
+    private val notifier = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 64)
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertTag(tag: TagEntity): Long
+    fun getAllTags(): Flow<List<TagEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getAllTags() }
+        .flowOn(Dispatchers.IO)
 
-    @Update
-    suspend fun updateTag(tag: TagEntity)
+    fun getTagsForNote(noteId: Long): Flow<List<TagEntity>> = notifier
+        .onStart { emit(Unit) }
+        .map { db.getTagsForNote(noteId) }
+        .flowOn(Dispatchers.IO)
 
-    @Delete
-    suspend fun deleteTag(tag: TagEntity)
+    suspend fun getTagById(id: Long): TagEntity? = withContext(Dispatchers.IO) {
+        db.getTagById(id)
+    }
 
-    @Query("SELECT t.* FROM tags t INNER JOIN note_tag_cross_ref c ON t.id = c.tagId WHERE c.noteId = :noteId")
-    fun getTagsForNote(noteId: Long): Flow<List<TagEntity>>
+    suspend fun insertTag(tag: TagEntity): Long = withContext(Dispatchers.IO) {
+        db.insertTag(tag).also { notifier.tryEmit(Unit) }
+    }
+
+    suspend fun deleteTag(tag: TagEntity) = withContext(Dispatchers.IO) {
+        db.deleteTag(tag).also { notifier.tryEmit(Unit) }
+    }
 }
