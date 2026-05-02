@@ -66,7 +66,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun NoteAppTheme(
+fun ScheduleAppTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {

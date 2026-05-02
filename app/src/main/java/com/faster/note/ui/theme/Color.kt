@@ -61,10 +61,3 @@ val DarkInverseSurface = Color(0xFFE3E2E6)
 val DarkInverseOnSurface = Color(0xFF1A1C1E)
 val DarkInversePrimary = Color(0xFF1565C0)
 val DarkSurfaceTint = Color(0xFF9ECAFF)
-
-// Note card colors (blue-accented palette)
-val NoteColors = listOf(
-    Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9),
-    Color(0xFFE8F5E9), Color(0xFFFFF3E0), Color(0xFFFCE4EC),
-    Color(0xFFF3E5F5), Color(0xFFE0F7FA)
-)
