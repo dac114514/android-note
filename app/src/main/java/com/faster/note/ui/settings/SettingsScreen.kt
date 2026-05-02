@@ -1,17 +1,19 @@
 package com.faster.note.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.faster.note.data.db.entity.CategoryEntity
@@ -28,97 +30,169 @@ fun SettingsScreen(
     var editingCategory by remember { mutableStateOf<CategoryEntity?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("设置") }) }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        topBar = {
+            TopAppBar(title = { Text("设置") })
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
         ) {
-            item { Text("外观", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
-            item {
-                Card {
+            Spacer(Modifier.height(12.dp))
+
+            // Appearance section
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.DarkMode,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text("深色模式", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Switch(checked = uiState.isDarkMode, onCheckedChange = {
+                        viewModel.toggleDarkMode(it)
+                        onToggleDarkMode(it)
+                    })
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Category management section
+            var catExpanded by remember { mutableStateOf(true) }
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { catExpanded = !catExpanded }
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("深色模式", modifier = Modifier.weight(1f))
-                        Switch(checked = uiState.isDarkMode, onCheckedChange = {
-                            viewModel.toggleDarkMode(it)
-                            onToggleDarkMode(it)
-                        })
+                        Icon(
+                            Icons.Filled.Label,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text("分类管理", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Icon(
+                            if (catExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = if (catExpanded) "收起" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
                     }
-                }
-            }
-
-            item {
-                Spacer(Modifier.height(8.dp))
-                Text("分类管理", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            }
-            item {
-                Card {
-                    Column {
-                        uiState.categories.forEach { category ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    modifier = Modifier.size(12.dp),
-                                    shape = MaterialTheme.shapes.small,
-                                    color = Color(category.color)
-                                ) {}
-                                Spacer(Modifier.width(12.dp))
-                                Text(category.name, modifier = Modifier.weight(1f))
-                                TextButton(onClick = { editingCategory = category }) { Text("编辑") }
-                                if (!category.isPreset) {
-                                    IconButton(onClick = { viewModel.deleteCategory(category) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                    AnimatedVisibility(visible = catExpanded) {
+                        Column {
+                            HorizontalDivider()
+                            uiState.categories.forEach { category ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(12.dp),
+                                        shape = MaterialTheme.shapes.small,
+                                        color = Color(category.color)
+                                    ) {}
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(category.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                    TextButton(onClick = { editingCategory = category }) { Text("编辑") }
+                                    if (!category.isPreset) {
+                                        IconButton(onClick = { viewModel.deleteCategory(category) }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                                        }
                                     }
                                 }
+                                if (category != uiState.categories.last()) {
+                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                }
                             }
-                            if (category != uiState.categories.last()) {
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            HorizontalDivider()
+                            TextButton(
+                                onClick = { showAddDialog = true },
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("添加分类")
                             }
-                        }
-                        TextButton(
-                            onClick = { showAddDialog = true },
-                            modifier = Modifier.padding(8.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("添加分类")
                         }
                     }
                 }
             }
 
-            item {
-                Spacer(Modifier.height(8.dp))
-                Text("AI 设置", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            }
-            item {
-                Card {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("API 配置", fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(4.dp))
-                        Text("后续版本将支持接入 AI API 进行智能分析", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
+
+            // AI Settings section
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text("AI 设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("后续版本将支持接入 AI API 进行智能分析", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
 
-            item {
-                Spacer(Modifier.height(8.dp))
-                Text("关于", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            }
-            item {
-                Card {
-                    TextButton(onClick = onOpenAbout, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                        Text("关于日程")
+            Spacer(Modifier.height(12.dp))
+
+            // About section
+            var aboutExpanded by remember { mutableStateOf(false) }
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { aboutExpanded = !aboutExpanded }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text("关于", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Icon(
+                            if (aboutExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = if (aboutExpanded) "收起" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                    AnimatedVisibility(visible = aboutExpanded) {
+                        Column {
+                            HorizontalDivider()
+                            FileEntryItem("关于日程", Icons.Filled.Star, onOpenAbout)
+                        }
                     }
                 }
             }
-            item { Spacer(Modifier.height(32.dp)) }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 
@@ -181,6 +255,35 @@ fun SettingsScreen(
                     editingCategory = null
                 }) { Text("取消") }
             }
+        )
+    }
+}
+
+@Composable
+private fun FileEntryItem(title: String, icon: ImageVector, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = ">",
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            style = MaterialTheme.typography.bodyLarge
         )
     }
 }

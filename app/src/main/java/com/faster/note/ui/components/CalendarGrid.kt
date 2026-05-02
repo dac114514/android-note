@@ -42,7 +42,7 @@ fun CalendarGrid(
                     text = day,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
@@ -81,7 +81,7 @@ fun CalendarGrid(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = if (isValid) day.toString() else "",
-                                fontSize = 14.sp,
+                                fontSize = 15.sp,
                                 fontWeight = when {
                                     isSelected -> FontWeight.Bold
                                     isToday -> FontWeight.Bold
@@ -97,7 +97,7 @@ fun CalendarGrid(
                             if (isMarked && !isSelected) {
                                 Box(
                                     modifier = Modifier
-                                        .size(4.dp)
+                                        .size(5.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.primary)
                                 )
