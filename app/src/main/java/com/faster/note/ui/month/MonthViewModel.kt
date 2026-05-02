@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.faster.note.data.ai.DeepSeekService
 import com.faster.note.data.db.entity.CategoryEntity
 import com.faster.note.data.db.entity.ScheduleEntity
+import com.faster.note.data.repository.AiAnalysisRepository
 import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import com.faster.note.data.repository.ScheduleRepository
@@ -13,10 +14,10 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-
 data class SearchResult(
     val schedule: ScheduleEntity,
     val categoryName: String,
+    val categoryColor: Int,
     val dateLabel: String,
     val timeLabel: String,
     val dayOfMonth: Int
@@ -111,6 +112,7 @@ class MonthViewModel : ViewModel() {
                 SearchResult(
                     schedule = s,
                     categoryName = cat?.name ?: "",
+                    categoryColor = cat?.color ?: 0,
                     dateLabel = sdfDate.format(Date(s.date)),
                     timeLabel = timeLabel,
                     dayOfMonth = cal2.get(Calendar.DAY_OF_MONTH)
@@ -136,6 +138,17 @@ class MonthViewModel : ViewModel() {
             aiError = aiError
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthUiState(0, 0))
+
+    init {
+        viewModelScope.launch {
+            _currentMonth.collect { cal ->
+                val year = cal.get(Calendar.YEAR)
+                val month = cal.get(Calendar.MONTH) + 1
+                val saved = AiAnalysisRepository.loadAnalysis(year, month)
+                _aiAnalysisText.value = saved
+            }
+        }
+    }
 
     fun selectDay(day: Int) { _selectedDay.value = day }
     fun clearSelection() { _selectedDay.value = null }
@@ -207,6 +220,7 @@ class MonthViewModel : ViewModel() {
                 val result = DeepSeekService.requestAnalysis(apiKey, prompt)
                 _aiAnalysisText.value = result
                 _aiError.value = null
+                AiAnalysisRepository.saveAnalysis(year, month, result)
             } catch (e: Exception) {
                 _aiError.value = e.message ?: "分析失败"
             } finally {

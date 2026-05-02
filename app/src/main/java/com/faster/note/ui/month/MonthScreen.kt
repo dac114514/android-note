@@ -454,7 +454,9 @@ private fun SearchResultItem(
                     Text(
                         text = result.categoryName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (result.categoryColor != 0)
+                            androidx.compose.ui.graphics.Color(result.categoryColor)
+                        else MaterialTheme.colorScheme.primary
                     )
                 }
                 if (result.schedule.isCompleted) {
