@@ -35,27 +35,34 @@ class DayViewModel : ViewModel() {
     private val _aiError = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<DayUiState> = combine(
-        _currentDate.flatMapLatest { cal ->
-            val dateStart = Calendar.getInstance().apply {
-                set(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-            val dateEnd = dateStart + 86400000L - 1
-            ScheduleRepository.schedules.map { list ->
-                list.filter { it.date in dateStart..dateEnd }
-                    .sortedWith(compareBy<ScheduleEntity> { !it.isAllDay }.thenBy { it.startTime ?: Long.MAX_VALUE })
-            }
-        },
+        _currentDate,
+        ScheduleRepository.schedules,
         CategoryRepository.categories,
         _aiLoading,
         _aiAnalysisText,
         _aiError,
         AiConfigRepository.apiKey
-    ) { schedules, categories, aiLoading, aiText, aiError, apiKey ->
+    ) { values ->
+        val cal = values[0] as Calendar
+        val allSchedules = values[1] as List<ScheduleEntity>
+        val categories = values[2] as List<CategoryEntity>
+        val aiLoading = values[3] as Boolean
+        val aiText = values[4] as String
+        val aiError = values[5] as String?
+        val apiKey = values[6] as String
+
+        val dateStart = Calendar.getInstance().apply {
+            set(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val dateEnd = dateStart + 86400000L - 1
+        val schedules = allSchedules.filter { it.date in dateStart..dateEnd }
+            .sortedWith(compareBy<ScheduleEntity> { !it.isAllDay }.thenBy { it.startTime ?: Long.MAX_VALUE })
+
         DayUiState(
-            year = _currentDate.value.get(Calendar.YEAR),
-            month = _currentDate.value.get(Calendar.MONTH) + 1,
-            day = _currentDate.value.get(Calendar.DAY_OF_MONTH),
+            year = cal.get(Calendar.YEAR),
+            month = cal.get(Calendar.MONTH) + 1,
+            day = cal.get(Calendar.DAY_OF_MONTH),
             schedules = schedules,
             categories = categories,
             completedCount = schedules.count { it.isCompleted },
