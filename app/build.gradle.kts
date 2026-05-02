@@ -1,21 +1,6 @@
-buildscript {
-    dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10")
-    }
-}
-
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.android.legacy.kapt)
     alias(libs.plugins.kotlin.compose)
-}
-
-import org.jetbrains.kotlin.gradle.internal.KaptWithoutKotlincTask
-
-// Workaround for AGP 9.0 legacy-kapt KaptWithoutKotlincTask having empty classpath
-// https://issuetracker.google.com/issues/446889652
-tasks.withType(KaptWithoutKotlincTask::class.java).configureEach {
-    kaptClasspath.from(project.configurations.named("kapt").map { it.incoming.artifactView { }.files })
 }
 
 android {
@@ -59,9 +44,6 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    kapt(libs.room.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

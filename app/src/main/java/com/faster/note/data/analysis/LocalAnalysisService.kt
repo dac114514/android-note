@@ -2,6 +2,7 @@ package com.faster.note.data.analysis
 
 import com.faster.note.data.repository.CategoryRepository
 import com.faster.note.data.repository.ScheduleRepository
+import kotlinx.coroutines.flow.first
 
 class LocalAnalysisService(
     private val scheduleRepository: ScheduleRepository,
@@ -9,17 +10,17 @@ class LocalAnalysisService(
 ) : AnalysisService {
 
     override suspend fun analyzeDaily(year: Int, month: Int, day: Int): AnalysisReport {
-        val schedules = scheduleRepository.getSchedulesForDate(year, month, day)
-        // Flow-based, we'll use the repository's suspend functions instead
-        val total = 0
-        val completed = 0
+        val schedules = scheduleRepository.getSchedulesForDate(year, month, day).first()
+        val total = schedules.size
+        val completed = schedules.count { it.isCompleted }
+        val rate = if (total > 0) completed.toFloat() / total else 0f
         return AnalysisReport(
             period = "daily",
             totalEvents = total,
             completedEvents = completed,
-            completionRate = 0f,
+            completionRate = rate,
             categoryDistribution = emptyList(),
-            summary = "暂无日程数据"
+            summary = "今日共 $total 项日程，已完成 $completed 项（${(rate * 100).toInt()}%）"
         )
     }
 
