@@ -1,11 +1,5 @@
 pluginManagement {
     repositories {
-        // Pre-resolve KSP directly from Google Maven (Aliyun mirror doesn't have it)
-        maven("https://maven.google.com") {
-            content {
-                includeGroupByRegex("com\\.google\\.devtools\\.ksp")
-            }
-        }
         maven("https://maven.aliyun.com/repository/gradle-plugin")
         maven("https://maven.aliyun.com/repository/google")
         maven("https://maven.aliyun.com/repository/public")
