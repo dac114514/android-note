@@ -1,6 +1,7 @@
 [versions]
 agp = "9.0.0"
 kotlin = "2.3.10"
+ksp = "2.3.10-1.0.22"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
@@ -38,3 +39,4 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
