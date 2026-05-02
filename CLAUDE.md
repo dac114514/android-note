@@ -1,28 +1,53 @@
-**严格遵守**以下所规则
+# Development Rules
 
-## 1. 构建规则
+## 1. Build Restrictions
 
-**禁止本地构建 APK**：
-- 不要在本地运行任何生成 APK 的 Gradle 命令。
-- 所有 APK 必须通过 **GitHub Actions CI**（MCP Workflow）构建。
+- **DO NOT** run any Gradle command locally
+- Builds, linting, formatting checks — everything runs on **GitHub Actions CI**
 
-**本地只允许运行**：
-- 轻量静态检查（如代码格式检查、lint）
+## 2. Workflow
 
-## 2. 开发与推送流程
+### Daily Development
+- Write code on local `main` branch, commits stay local
 
-1. **直接在本地 main 分支** 写代码。
-2. 写完后进行自我检查
-3. 使用以下快捷命令提交并推送：
-   - `git done "修改描述"` 
-4. 推送完成后，**立即查看** GitHub 的 CI 构建状态。
-5. 根据结果处理：
-   - **构建失败**：读取日志，分析问题，给出修复建议。
-   - **构建成功**：给出构建总结（时间、结果等）。
+### During Development
+- I judge when verification is needed (e.g., after completing a logical unit of work) and push for review on my own initiative
+- `git push origin main:master` — push current code to remote `master`
+- Trigger `review.yml` — CI runs checks (lint, spotless) on the `master` branch
+- Fix issues if any, then continue
 
-## 3. 注意事项
-- 不需要额外创建分支，也不需要 merge 操作。
-- 直接在 main 分支开发和推送。
-- 每次修改后必须走 CI 验证。
-- 禁止运行未经许可的Gradle命令
+### Development Complete
+1. `git push origin main` — push final code to remote `main`
+2. `build.yml` auto-triggers to build the APK
+3. Monitor CI status:
+   - **Failed**: read logs, analyze, suggest fixes
+   - **Success**: report summary (time, result)
 
+## 3. Notes
+
+- No extra branches, no merge operations
+- Every change must pass CI verification
+- No unauthorized Gradle commands
+
+---
+
+## Coding Guidelines
+
+### Think Before Coding
+- State assumptions, ask if uncertain
+- Surface tradeoffs when multiple approaches exist
+- Push back when something can be simplified
+
+### Keep It Simple
+- Solve only what was asked, no extra features
+- No abstractions for single-use code
+- Don't handle impossible errors
+
+### Surgical Changes
+- Touch only what's necessary
+- Match existing style, don't refactor working code
+- Clean up orphans your changes created (unused imports/variables)
+
+### Goal-Driven
+- Define verification criteria, iterate until met
+- For multi-step tasks, state a brief plan first

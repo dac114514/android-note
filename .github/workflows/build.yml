@@ -2,9 +2,14 @@ name: CI Build
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      gradle_tasks:
+        description: 'Gradle 任务'
+        required: false
+        default: 'assembleDebug'
+        type: string
 
 jobs:
   build:
@@ -26,10 +31,13 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug
+        run: ./gradlew ${{ github.event.inputs.gradle_tasks || 'assembleDebug' }}
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/
+          name: build-outputs
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/reports/**/*
