@@ -11,7 +11,7 @@ composeBom = "2026.01.01"
 navigationCompose = "2.8.5"
 lifecycleViewmodelCompose = "2.8.7"
 materialIconsExtended = "1.7.8"
-ksp = "2.3.10-1.0.20"
+ksp = "2.3.4"
 room = "2.6.1"
 
 [libraries]
@@ -39,4 +39,4 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-ksp = { id = "org.jetbrains.kotlin.ksp", version.ref = "ksp" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
