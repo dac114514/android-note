@@ -38,8 +38,8 @@ fun ScheduleCard(
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (schedule.isCompleted)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.surfaceVariant
+            else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
