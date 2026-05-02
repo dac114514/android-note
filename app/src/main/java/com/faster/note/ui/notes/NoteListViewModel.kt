@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 class NoteListViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = (application as NoteApp).noteRepository
 
-    private val _filter by lazy { MutableStateFlow<NoteFilter>(NoteFilter.All) }
+    val _filter = MutableStateFlow<NoteFilter>(NoteFilter.All)
     val notes: StateFlow<List<NoteEntity>> = _filter.flatMapLatest { filter ->
         when (filter) {
             is NoteFilter.All -> repo.allNotes

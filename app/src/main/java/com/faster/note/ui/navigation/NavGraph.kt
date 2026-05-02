@@ -30,9 +30,7 @@ fun NoteNavHost(navController: NavHostController) {
             NoteListScreen(
                 onOpenNote = { id -> navController.navigate(Routes.noteEdit(id)) },
                 onNewNote = { navController.navigate(Routes.NOTE_NEW) },
-                onOpenFolders = { navController.navigate(Routes.FOLDERS) },
-                onOpenSearch = { navController.navigate(Routes.SEARCH) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                onOpenSearch = { navController.navigate(Routes.SEARCH) }
             )
         }
         composable(
