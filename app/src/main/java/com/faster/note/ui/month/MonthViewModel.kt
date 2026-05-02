@@ -49,7 +49,16 @@ class MonthViewModel : ViewModel() {
         _aiAnalysisText,
         _aiLoading,
         _aiError
-    ) { cal, allSchedules, query, selectedDay, categories, apiKey, aiText, aiLoading, aiError ->
+    ) { values ->
+        val cal = values[0] as Calendar
+        val allSchedules = values[1] as List<ScheduleEntity>
+        val query = values[2] as String
+        val selectedDay = values[3] as Int?
+        val categories = values[4] as List<CategoryEntity>
+        val apiKey = values[5] as String
+        val aiText = values[6] as String
+        val aiLoading = values[7] as Boolean
+        val aiError = values[8] as String?
         val year = cal.get(Calendar.YEAR)
         val month = cal.get(Calendar.MONTH) + 1
         val monthStart = Calendar.getInstance().apply {
