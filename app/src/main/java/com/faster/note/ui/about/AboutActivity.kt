@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.faster.note.ui.theme.ScheduleAppTheme
 
 private const val GITHUB_URL = "https://github.com/dac114514/android-note"
-private const val APP_VERSION = "v1.0.0"
+private const val APP_VERSION = "v1.2.0"
 
 class AboutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
