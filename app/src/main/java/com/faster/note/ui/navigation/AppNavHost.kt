@@ -25,6 +25,7 @@ fun AppNavHost(
     settingsViewModel: SettingsViewModel,
     isDarkMode: Boolean = false,
     onToggleDarkMode: (Boolean) -> Unit = {},
+    onCheckUpdate: () -> Unit = {},
     onOpenAbout: () -> Unit = {}
 ) {
     NavHost(navController = navController, startDestination = Routes.DAY) {
@@ -59,6 +60,7 @@ fun AppNavHost(
             SettingsScreen(
                 viewModel = settingsViewModel,
                 onToggleDarkMode = onToggleDarkMode,
+                onCheckUpdate = onCheckUpdate,
                 onOpenAbout = onOpenAbout
             )
         }

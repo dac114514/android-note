@@ -24,6 +24,7 @@ import com.faster.note.data.db.entity.CategoryEntity
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onToggleDarkMode: (Boolean) -> Unit,
+    onCheckUpdate: () -> Unit,
     onOpenAbout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -209,6 +210,8 @@ fun SettingsScreen(
                     }
                     AnimatedVisibility(visible = aboutExpanded) {
                         Column {
+                            HorizontalDivider()
+                            FileEntryItem("检查更新", Icons.Default.SystemUpdate, onCheckUpdate)
                             HorizontalDivider()
                             FileEntryItem("关于日程", Icons.Filled.Star, onOpenAbout)
                         }

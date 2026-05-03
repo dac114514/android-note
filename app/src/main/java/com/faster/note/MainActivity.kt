@@ -35,6 +35,11 @@ import com.faster.note.ui.navigation.AppNavHost
 import com.faster.note.ui.navigation.Routes
 import com.faster.note.ui.settings.SettingsViewModel
 import com.faster.note.ui.theme.ScheduleAppTheme
+import com.github.javiersantos.appupdater.AppUpdater
+import com.github.javiersantos.appupdater.enums.Display
+import com.github.javiersantos.appupdater.enums.UpdateFrom
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,6 +109,14 @@ class MainActivity : ComponentActivity() {
                             settingsViewModel = settingsViewModel,
                             isDarkMode = isDarkMode,
                             onToggleDarkMode = { isDarkMode = it },
+                            onCheckUpdate = {
+                                AppUpdater(this@MainActivity)
+                                    .setUpdateFrom(UpdateFrom.GITHUB)
+                                    .setGitHubUserAndRepo("dac114514", "android-note")
+                                    .setDisplay(Display.DIALOG)
+                                    .showAppUpdated(true)
+                                    .start()
+                            },
                             onOpenAbout = {
                                 startActivity(Intent(this@MainActivity, AboutActivity::class.java))
                             }
@@ -111,6 +124,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+
+        // Daily silent check for updates on first launch
+        val prefs = getSharedPreferences("app_updater_prefs", MODE_PRIVATE)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val lastCheck = prefs.getString("last_update_check_date", "")
+        if (lastCheck != today) {
+            AppUpdater(this)
+                .setUpdateFrom(UpdateFrom.GITHUB)
+                .setGitHubUserAndRepo("dac114514", "android-note")
+                .setDisplay(Display.DIALOG)
+                .showAppUpdated(false)
+                .start()
+            prefs.edit().putString("last_update_check_date", today).apply()
         }
     }
 }
