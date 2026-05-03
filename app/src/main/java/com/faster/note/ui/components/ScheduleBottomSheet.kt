@@ -8,11 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -59,6 +58,8 @@ fun ScheduleBottomSheet(
     } else 0) }
     var scheduleDate by remember(schedule) { mutableStateOf(schedule?.date ?: defaultDateMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(
@@ -288,29 +289,39 @@ fun ScheduleBottomSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = "%02d".format(startHour),
-                                onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) startHour = h } },
-                                label = { Text("时") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(80.dp),
-                                singleLine = true
+                        OutlinedTextField(
+                            value = "%02d:%02d".format(startHour, startMinute),
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("开始时间") },
+                            trailingIcon = {
+                                IconButton(onClick = { showStartTimePicker = true }) {
+                                    Icon(Icons.Default.AccessTime, contentDescription = "选择开始时间")
+                                }
+                            }
+                        )
+                        if (showStartTimePicker) {
+                            val startTimePickerState = rememberTimePickerState(
+                                initialHour = startHour,
+                                initialMinute = startMinute,
+                                is24Hour = true
                             )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                ":",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            OutlinedTextField(
-                                value = "%02d".format(startMinute),
-                                onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) startMinute = m } },
-                                label = { Text("分") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(80.dp),
-                                singleLine = true
+                            AlertDialog(
+                                onDismissRequest = { showStartTimePicker = false },
+                                title = { Text("选择开始时间") },
+                                text = { TimePicker(state = startTimePickerState) },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        startHour = startTimePickerState.hour
+                                        startMinute = startTimePickerState.minute
+                                        showStartTimePicker = false
+                                    }) { Text("确认") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showStartTimePicker = false }) { Text("取消") }
+                                }
                             )
                         }
                         Spacer(Modifier.height(12.dp))
@@ -320,29 +331,39 @@ fun ScheduleBottomSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = "%02d".format(endHour),
-                                onValueChange = { it.toIntOrNull()?.let { h -> if (h in 0..23) endHour = h } },
-                                label = { Text("时") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(80.dp),
-                                singleLine = true
+                        OutlinedTextField(
+                            value = "%02d:%02d".format(endHour, endMinute),
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("结束时间") },
+                            trailingIcon = {
+                                IconButton(onClick = { showEndTimePicker = true }) {
+                                    Icon(Icons.Default.AccessTime, contentDescription = "选择结束时间")
+                                }
+                            }
+                        )
+                        if (showEndTimePicker) {
+                            val endTimePickerState = rememberTimePickerState(
+                                initialHour = endHour,
+                                initialMinute = endMinute,
+                                is24Hour = true
                             )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                ":",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            OutlinedTextField(
-                                value = "%02d".format(endMinute),
-                                onValueChange = { it.toIntOrNull()?.let { m -> if (m in 0..59) endMinute = m } },
-                                label = { Text("分") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(80.dp),
-                                singleLine = true
+                            AlertDialog(
+                                onDismissRequest = { showEndTimePicker = false },
+                                title = { Text("选择结束时间") },
+                                text = { TimePicker(state = endTimePickerState) },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        endHour = endTimePickerState.hour
+                                        endMinute = endTimePickerState.minute
+                                        showEndTimePicker = false
+                                    }) { Text("确认") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showEndTimePicker = false }) { Text("取消") }
+                                }
                             )
                         }
                         Spacer(Modifier.height(16.dp))
