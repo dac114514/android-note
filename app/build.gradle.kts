@@ -59,9 +59,6 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.app.updater) {
-        exclude(group = "com.android.support")
-    }
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,7 +1,9 @@
 package com.faster.note
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,11 +24,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.faster.note.data.AppUpdaterService
 import com.faster.note.data.local.DataStore
 import com.faster.note.ui.about.AboutActivity
 import com.faster.note.ui.day.DayViewModel
@@ -35,9 +39,7 @@ import com.faster.note.ui.navigation.AppNavHost
 import com.faster.note.ui.navigation.Routes
 import com.faster.note.ui.settings.SettingsViewModel
 import com.faster.note.ui.theme.ScheduleAppTheme
-import com.github.javiersantos.appupdater.AppUpdater
-import com.github.javiersantos.appupdater.enums.Display
-import com.github.javiersantos.appupdater.enums.UpdateFrom
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -46,6 +48,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         DataStore.init(applicationContext)
         enableEdgeToEdge()
+
+        var showUpdateDialog by mutableStateOf(false)
+        var pendingUpdate by mutableStateOf<AppUpdaterService.UpdateResult?>(null)
 
         setContent {
             var isDarkMode by remember { mutableStateOf(false) }
@@ -110,18 +115,39 @@ class MainActivity : ComponentActivity() {
                             isDarkMode = isDarkMode,
                             onToggleDarkMode = { isDarkMode = it },
                             onCheckUpdate = {
-                                AppUpdater(this@MainActivity)
-                                    .setUpdateFrom(UpdateFrom.GITHUB)
-                                    .setGitHubUserAndRepo("dac114514", "android-note")
-                                    .setDisplay(Display.DIALOG)
-                                    .showAppUpdated(true)
-                                    .start()
+                                lifecycleScope.launch {
+                                    val result = AppUpdaterService.checkForUpdate()
+                                    if (result != null) {
+                                        pendingUpdate = result
+                                        showUpdateDialog = true
+                                    } else {
+                                        Toast.makeText(this@MainActivity, "已是最新版本", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             },
                             onOpenAbout = {
                                 startActivity(Intent(this@MainActivity, AboutActivity::class.java))
                             }
                         )
                     }
+                }
+
+                if (showUpdateDialog && pendingUpdate != null) {
+                    val update = pendingUpdate!!
+                    AlertDialog(
+                        onDismissRequest = { showUpdateDialog = false },
+                        title = { Text("发现新版本 ${update.latestVersion}") },
+                        text = { Text(update.releaseNotes.ifBlank { "有新版本可用，是否前往更新？" }) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl)))
+                                showUpdateDialog = false
+                            }) { Text("更新") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showUpdateDialog = false }) { Text("稍后") }
+                        }
+                    )
                 }
             }
         }
@@ -131,12 +157,13 @@ class MainActivity : ComponentActivity() {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val lastCheck = prefs.getString("last_update_check_date", "")
         if (lastCheck != today) {
-            AppUpdater(this)
-                .setUpdateFrom(UpdateFrom.GITHUB)
-                .setGitHubUserAndRepo("dac114514", "android-note")
-                .setDisplay(Display.DIALOG)
-                .showAppUpdated(false)
-                .start()
+            lifecycleScope.launch {
+                val result = AppUpdaterService.checkForUpdate()
+                if (result != null) {
+                    pendingUpdate = result
+                    showUpdateDialog = true
+                }
+            }
             prefs.edit().putString("last_update_check_date", today).apply()
         }
     }

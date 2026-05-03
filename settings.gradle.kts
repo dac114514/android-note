@@ -24,7 +24,6 @@ dependencyResolutionManagement {
         maven("https://repo.huaweicloud.com/repository/maven/")
         google()
         mavenCentral()
-        maven("https://jitpack.io")
     }
 }
 
