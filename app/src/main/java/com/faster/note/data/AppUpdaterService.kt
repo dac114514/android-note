@@ -1,5 +1,6 @@
 package com.faster.note.data
 
+import com.faster.note.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
