@@ -1,6 +1,7 @@
 package com.faster.note.ui.settings
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.faster.note.data.db.entity.CategoryEntity
 import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
