@@ -10,16 +10,21 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
-const val CHAT_SYSTEM_PROMPT = """
+object DeepSeekService {
+
+    private const val BASE_URL = "https://api.deepseek.com/v1/chat/completions"
+    private const val MODEL = "deepseek-v4-flash"
+
+    const val CHAT_SYSTEM_PROMPT = """
 你是一个日程管理助手。用户可以通过自然语言让你创建、修改、查询或删除日程。
 
 你有以下操作能力，通过在回复中嵌入指令块来执行：
 
 1. [ACTION:CREATE]{json}[/ACTION] — 创建新日程
-   json参数: title(必填), date(必填,毫秒), startTime, endTime, isAllDay, categoryName, notes
+   json参数: title(必填), date(必填,Unix纪元毫秒), startTime, endTime, isAllDay, categoryName, notes
 
 2. [ACTION:READ]{json}[/ACTION] — 查询指定日期范围的日程
-   json参数: startDate(必填,毫秒), endDate(必填,毫秒)
+   json参数: startDate(必填,Unix纪元毫秒), endDate(必填,Unix纪元毫秒)
    执行后系统会返回该范围内的日程列表供你参考
 
 3. [ACTION:UPDATE]{json}[/ACTION] — 修改已有日程
@@ -33,11 +38,6 @@ SCHEDULE_CARD的json参数: id, title, date, startTime, endTime, isAllDay, categ
 
 回复使用中文，可使用 Markdown 格式（标题、加粗、列表等）。
 """
-
-object DeepSeekService {
-
-    private const val BASE_URL = "https://api.deepseek.com/v1/chat/completions"
-    private const val MODEL = "deepseek-v4-flash"
 
     suspend fun requestAnalysis(
         apiKey: String,
