@@ -390,7 +390,7 @@ class AiChatViewModel : ViewModel() {
     }
 
     private fun executeUpdateDate(json: JSONObject): String {
-        val id = json.optLong("id", -1L)
+        val id = parseId(json)
         if (id <= 0) return "[ERROR] 修改失败：缺少或无效的 id 参数"
         val newDate = json.optLong("date", -1L)
         if (newDate <= 0) return "[ERROR] 修改失败：缺少或无效的 date 参数"
@@ -403,7 +403,7 @@ class AiChatViewModel : ViewModel() {
     }
 
     private fun executeUpdateInfo(json: JSONObject): String {
-        val id = json.optLong("id", -1L)
+        val id = parseId(json)
         if (id <= 0) return "[ERROR] 修改失败：缺少或无效的 id 参数"
 
         val existing = ScheduleRepository.schedules.value.find { it.id == id }
@@ -433,12 +433,12 @@ class AiChatViewModel : ViewModel() {
     }
 
     private fun executeDelete(json: JSONObject): String {
-        val id = json.optLong("id", -1L)
+        val id = parseId(json)
         if (id <= 0) return "[ERROR] 删除失败：缺少或无效的 id 参数"
         val existing = ScheduleRepository.schedules.value.find { it.id == id }
-            ?: return "[ERROR] 未找到 ID 为 $id 的日程"
+            ?: return "[SUCCESS] 日程已被删除（ID: $id）"  // Already deleted — not an error on retry
         ScheduleRepository.deleteSchedule(id)
-        return "[SUCCESS] 已删除日程：${existing.title}"
+        return "[SUCCESS] 已删除日程：${existing.title} (ID: $id)"
     }
 
     private fun optLongSafe(json: JSONObject, key: String): Long? {
@@ -448,6 +448,15 @@ class AiChatViewModel : ViewModel() {
             is Number -> v.toLong()
             is String -> v.toLongOrNull()
             else -> null
+        }
+    }
+
+    private fun parseId(json: JSONObject): Long {
+        val v = json.opt("id")
+        return when (v) {
+            is Number -> v.toLong()
+            is String -> v.toLongOrNull() ?: 0L
+            else -> 0L
         }
     }
 }

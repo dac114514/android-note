@@ -40,23 +40,8 @@ object DeepSeekService {
 - 星期计算：今天星期${weekday}，下周一 = 今天 + ((8 - 今天星期几的数字) % 7) 天，下周二 = 下周一 + 86400000，依此类推
 
 【可用工具】
-你有以下工具可用，通过函数调用来执行操作：
-
-1. read_schedules — 读取指定日期范围内的所有日程。当用户询问日程安排、分析日程或任何需要查询日程数据时，**必须**调用此工具，不能仅凭上下文回答。
-   参数: startDate(必填,纪元毫秒), endDate(必填,纪元毫秒)
-   返回: 管道分隔格式的日程列表，包含每个日程的 ID、日期、时间、标题、分组、完成状态
-
-2. create_schedule — 创建新日程
-   参数: title(必填), date(必填,纪元毫秒), startTime, endTime, isAllDay, categoryName, notes
-
-3. update_schedule_date — 修改日程的日期
-   参数: id(必填,日程ID), date(必填,新日期的纪元毫秒)
-
-4. update_schedule_info — 修改日程的详细信息（时间、标题、分组、完成状态、备注等）
-   参数: id(必填), 以及其他要修改的字段(title, startTime, endTime, isAllDay, categoryName, isCompleted, notes)
-
-5. delete_schedule — 删除指定ID的日程
-   参数: id(必填)
+你有以下工具可用：read_schedules, create_schedule, update_schedule_date, update_schedule_info, delete_schedule。
+当用户询问日程安排、分析日程或任何需要查询数据时，**必须**调用 read_schedules，不能仅凭上下文回答。
 
 【多步操作示例】
 用户："把下午3点的会议改成4点"
@@ -73,6 +58,16 @@ AI 最终：根据工具返回的实际结果回复用户
    可选字段：startTime、endTime、isAllDay、categoryName
 正确示例：好的，已为您创建团队会议 [SCHEDULE_CARD:{"id":1,"title":"团队会议","date":1717000000000,"categoryColor":-10072528,"startTime":1717023600000,"endTime":1717030800000}]
 错误示例：```json [SCHEDULE_CARD:{"id":1,"title":"团队会议","date":1717000000000}] ```
+
+【日程展示规则】
+根据日程数量选择展示方式：
+- 如果展示 1-3 个日程：使用 [SCHEDULE_CARD:{json}] 标签为每个日程生成卡片，内嵌在文本中
+- 如果展示 4 个及以上日程：使用 markdown 表格展示，格式如下：
+  | ID | 日期 | 时间 | 标题 | 分组 | 状态 |
+  |----|------|------|------|------|------|
+  | 1 | 6月6日 | 15:00 | 团队会议 | 工作 | 待完成 |
+  | 2 | 6月7日 | 09:00 | 站会 | 工作 | 已完成 |
+  表格必须包含表头行、分隔行、数据行。每行以 | 开始和结束。
 
 【重要：回复规则】
 - **必须基于工具返回的实际操作结果回复用户**。不要虚构或提前假设操作结果。
