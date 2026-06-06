@@ -39,12 +39,30 @@ fun AiChatScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val messages = uiState.messages
 
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
+    // Paging: only show latest N messages, load more when scrolling near top
+    var displayCount by remember { mutableIntStateOf(minOf(8, messages.size)) }
+    val displayMessages = remember(messages, displayCount) { messages.takeLast(displayCount) }
+
+    // Load more when scrolling near top of the displayed list
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex <= 2 && displayCount < messages.size
+        }
+    }
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            displayCount = minOf(displayCount + 8, messages.size)
+        }
+    }
+
+    // Auto-scroll to latest message when new ones arrive
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            if (lastVisible == null || lastVisible.index >= uiState.messages.size - 2) {
-                listState.animateScrollToItem(uiState.messages.size - 1)
+            if (lastVisible == null || lastVisible.index >= displayMessages.size - 2) {
+                listState.animateScrollToItem(displayMessages.size - 1)
             }
         }
     }
@@ -93,7 +111,7 @@ fun AiChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (uiState.messages.isEmpty() && !uiState.isLoading) {
+            if (displayMessages.isEmpty() && !uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -136,7 +154,22 @@ fun AiChatScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(uiState.messages, key = { it.id }) { msg ->
+                    // Show loading indicator at top if there are older messages
+                    if (displayCount < messages.size) {
+                        item(key = "load_more") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "滑动查看更早消息",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                    items(displayMessages, key = { it.id }) { msg ->
                         when (msg.role) {
                             MessageRole.USER -> UserBubble(msg.content)
                             MessageRole.AI -> AiBubble(

@@ -38,6 +38,8 @@ class AiChatViewModel : ViewModel() {
     val uiState: StateFlow<AiChatUiState> = _uiState.asStateFlow()
 
     private var messageIdCounter = 0L
+    private val modifiedScheduleIds = mutableSetOf<Long>()
+    private val toolTypesCalled = mutableSetOf<String>()
 
     init {
         viewModelScope.launch {
@@ -97,6 +99,9 @@ class AiChatViewModel : ViewModel() {
             error = null
         )
 
+        modifiedScheduleIds.clear()
+        toolTypesCalled.clear()
+
         viewModelScope.launch {
             try {
                 val epochCtx = buildEpochContext()
@@ -106,7 +111,8 @@ class AiChatViewModel : ViewModel() {
                     epochCtx.dateStr, epochCtx.todayStartMillis, epochCtx.weekday, categories
                 ) + if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
 
-                val messages = buildMessagesJson()
+                val contextMessages = buildContextMessages()
+                val messages = buildMessagesJson(contextMessages)
                 val tools = DeepSeekService.buildToolsJson(categories)
 
                 // First API call with tools
@@ -115,10 +121,8 @@ class AiChatViewModel : ViewModel() {
                 // Tool calling loop — max 10 iterations
                 var loopCount = 0
                 while (loopCount < 10 && result.toolCalls.isNotEmpty()) {
-                    // Add assistant message with tool_calls to history
                     messages.put(buildAssistantToolCallMsg(result.toolCalls))
 
-                    // Execute each tool call with verification + retry
                     for (tc in result.toolCalls) {
                         val execResult = executeToolWithRetry(tc.name, tc.arguments, maxRetries = 3)
                         messages.put(JSONObject().apply {
@@ -151,11 +155,16 @@ class AiChatViewModel : ViewModel() {
                     } else card
                 }
 
+                // Only show cards for modified schedules when CRUD tools were used
+                val onlyRead = toolTypesCalled.size == 1 && toolTypesCalled.contains("read_schedules")
+                val filteredCards = if (onlyRead || modifiedScheduleIds.isEmpty()) correctedCards
+                    else correctedCards.filter { it.scheduleId in modifiedScheduleIds }
+
                 val aiMsg = ChatMessage(
                     id = ++messageIdCounter,
                     role = MessageRole.AI,
                     content = displayText,
-                    scheduleCards = correctedCards
+                    scheduleCards = filteredCards
                 )
 
                 val finalMessages = _uiState.value.messages + aiMsg
@@ -184,10 +193,21 @@ class AiChatViewModel : ViewModel() {
         AiChatRepository.clearMessages()
     }
 
+    // === Context filtering ===
+
+    private fun buildContextMessages(): List<ChatMessage> {
+        val all = _uiState.value.messages
+        if (all.isEmpty()) return emptyList()
+        val lastTimestamp = all.last().timestamp
+        val fiveMinAgo = System.currentTimeMillis() - 5 * 60 * 1000
+        if (lastTimestamp < fiveMinAgo) return emptyList()
+        return all.takeLast(4)
+    }
+
     // === Message building ===
 
-    private fun buildMessagesJson(): JSONArray = JSONArray().apply {
-        _uiState.value.messages.forEach { msg ->
+    private fun buildMessagesJson(messages: List<ChatMessage> = _uiState.value.messages): JSONArray = JSONArray().apply {
+        messages.forEach { msg ->
             val role = when (msg.role) {
                 MessageRole.USER -> "user"
                 MessageRole.AI -> "assistant"
@@ -219,6 +239,7 @@ class AiChatViewModel : ViewModel() {
     // === Tool execution with verification and retry ===
 
     private fun executeToolWithRetry(name: String, argsJson: String, maxRetries: Int): String {
+        toolTypesCalled.add(name)
         val json = try { JSONObject(argsJson) } catch (_: Exception) { return "[ERROR] 无效的参数: $argsJson" }
         var lastResult = ""
         for (attempt in 0..maxRetries) {
@@ -254,13 +275,13 @@ class AiChatViewModel : ViewModel() {
             "create_schedule" -> {
                 val title = json.optString("title", "")
                 val date = json.optLong("date", -1L)
-                if (title.isBlank() || date <= 0) return true // can't verify, assume success
+                if (title.isBlank() || date <= 0) return true
                 ScheduleRepository.schedules.value.any {
                     it.title == title && kotlin.math.abs(it.date - date) < 3600000
                 }
             }
             "update_schedule_date" -> {
-                val id = json.optLong("id", -1L)
+                val id = parseId(json)
                 val newDate = json.optLong("date", -1L)
                 if (id <= 0 || newDate <= 0) return true
                 ScheduleRepository.schedules.value.find { it.id == id }
@@ -268,11 +289,11 @@ class AiChatViewModel : ViewModel() {
                     ?: false
             }
             "update_schedule_info" -> {
-                val id = json.optLong("id", -1L)
+                val id = parseId(json)
                 id > 0 && ScheduleRepository.schedules.value.any { it.id == id }
             }
             "delete_schedule" -> {
-                val id = json.optLong("id", -1L)
+                val id = parseId(json)
                 id > 0 && ScheduleRepository.schedules.value.none { it.id == id }
             }
             else -> true
@@ -362,6 +383,7 @@ class AiChatViewModel : ViewModel() {
             notes = json.optString("notes", null)
         )
         val scheduleId = ScheduleRepository.saveSchedule(schedule)
+        modifiedScheduleIds.add(scheduleId)
         return "[SUCCESS] 已创建日程：$title (ID: $scheduleId)$categoryWarn"
     }
 
@@ -408,6 +430,7 @@ class AiChatViewModel : ViewModel() {
             ?: return "[ERROR] 未找到 ID 为 $id 的日程"
 
         ScheduleRepository.saveSchedule(existing.copy(date = newDate))
+        modifiedScheduleIds.add(id)
         return "[SUCCESS] 已更新日程 [${existing.title}] 的日期"
     }
 
@@ -438,16 +461,28 @@ class AiChatViewModel : ViewModel() {
         }
 
         ScheduleRepository.saveSchedule(updated)
+        modifiedScheduleIds.add(id)
         return "[SUCCESS] 已更新日程：${updated.title}"
     }
 
     private fun executeDelete(json: JSONObject): String {
         val id = parseId(json)
-        if (id <= 0) return "[ERROR] 删除失败：缺少或无效的 id 参数"
-        val existing = ScheduleRepository.schedules.value.find { it.id == id }
-            ?: return "[SUCCESS] 日程已被删除（ID: $id）"  // Already deleted — not an error on retry
-        ScheduleRepository.deleteSchedule(id)
-        return "[SUCCESS] 已删除日程：${existing.title} (ID: $id)"
+        if (id <= 0) return "[ERROR] 删除失败：id 参数无效，收到: ${json.opt("id")}"
+        try {
+            val existing = ScheduleRepository.schedules.value.find { it.id == id }
+            if (existing == null) {
+                modifiedScheduleIds.add(id)
+                return "[SUCCESS] 日程 (ID: $id) 已被删除"
+            }
+            ScheduleRepository.deleteSchedule(id)
+            // Verify deletion succeeded
+            val stillExists = ScheduleRepository.schedules.value.any { it.id == id }
+            if (stillExists) return "[ERROR] 删除失败：日程 (ID: $id) 删除后仍存在于列表中"
+            modifiedScheduleIds.add(id)
+            return "[SUCCESS] 已删除日程：${existing.title} (ID: $id)"
+        } catch (e: Exception) {
+            return "[ERROR] 删除异常: ${e.message}"
+        }
     }
 
     private fun optLongSafe(json: JSONObject, key: String): Long? {
