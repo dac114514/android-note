@@ -17,9 +17,16 @@ data class ToolCall(
     val arguments: String
 )
 
+data class TokenUsage(
+    val promptTokens: Int,
+    val completionTokens: Int,
+    val totalTokens: Int
+)
+
 data class ChatResult(
     val content: String,
-    val toolCalls: List<ToolCall>
+    val toolCalls: List<ToolCall>,
+    val usage: TokenUsage? = null
 )
 
 object DeepSeekService {
@@ -267,7 +274,15 @@ AI 最终：根据工具返回的实际结果回复用户
                         )
                     }
                 } else emptyList()
-                ChatResult(content, toolCalls)
+                val usage = if (json.has("usage")) {
+                    val u = json.getJSONObject("usage")
+                    TokenUsage(
+                        promptTokens = u.optInt("prompt_tokens", 0),
+                        completionTokens = u.optInt("completion_tokens", 0),
+                        totalTokens = u.optInt("total_tokens", 0)
+                    )
+                } else null
+                ChatResult(content, toolCalls, usage)
             } else {
                 val errorReader = BufferedReader(InputStreamReader(conn.errorStream))
                 val errorBody = errorReader.readText()

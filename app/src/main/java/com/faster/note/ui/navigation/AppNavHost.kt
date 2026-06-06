@@ -10,6 +10,7 @@ import com.faster.note.ui.month.MonthScreen
 import com.faster.note.ui.month.MonthViewModel
 import com.faster.note.ui.ai.AiChatScreen
 import com.faster.note.ui.ai.AiChatViewModel
+import com.faster.note.ui.ai.AiSettingsScreen
 import com.faster.note.ui.settings.SettingsScreen
 import com.faster.note.ui.settings.SettingsViewModel
 
@@ -18,6 +19,7 @@ object Routes {
     const val MONTH = "month"
     const val SETTINGS = "settings"
     const val AI_CHAT = "ai_chat"
+    const val AI_SETTINGS = "ai_settings"
 }
 
 @Composable
@@ -78,7 +80,14 @@ fun AppNavHost(
                     navController.navigate(Routes.DAY) {
                         launchSingleTop = true
                     }
-                }
+                },
+                onNavigateToSettings = { navController.navigate(Routes.AI_SETTINGS) }
+            )
+        }
+        composable(Routes.AI_SETTINGS) {
+            AiSettingsScreen(
+                viewModel = aiChatViewModel,
+                onBack = { navController.popBackStack() }
             )
         }
     }

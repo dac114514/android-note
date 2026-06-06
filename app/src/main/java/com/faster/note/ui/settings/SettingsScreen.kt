@@ -183,57 +183,6 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // AI chat record card
-            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
-                var showClearConfirm by remember { mutableStateOf(false) }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Chat,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("AI 对话记录", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                        Text(
-                            "当前共 ${uiState.chatMessageCount} 条对话",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { showClearConfirm = true },
-                        enabled = uiState.chatMessageCount > 0
-                    ) {
-                        Text("清理上下文")
-                    }
-                }
-                if (showClearConfirm) {
-                    AlertDialog(
-                        onDismissRequest = { showClearConfirm = false },
-                        title = { Text("清理 AI 对话") },
-                        text = { Text("将清除所有 AI 对话记录，此操作不可撤销。") },
-                        confirmButton = {
-                            Button(onClick = {
-                                viewModel.clearAiContext()
-                                showClearConfirm = false
-                            }) { Text("清理") }
-                        },
-                        dismissButton = {
-                            OutlinedButton(onClick = { showClearConfirm = false }) { Text("取消") }
-                        }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
             // About section
             var aboutExpanded by remember { mutableStateOf(false) }
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {

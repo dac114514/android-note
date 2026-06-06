@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.faster.note.data.ai.ActionParser
 import com.faster.note.data.ai.DeepSeekService
+import com.faster.note.data.ai.TokenUsage
 import com.faster.note.data.ai.ResponseBlock
 import com.faster.note.data.ai.ToolCall
 import com.faster.note.data.db.entity.ScheduleEntity
@@ -11,6 +12,8 @@ import com.faster.note.data.repository.AiChatRepository
 import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import com.faster.note.data.repository.ChatMessage
+import com.faster.note.data.repository.TokenUsageRecord
+import com.faster.note.data.repository.TokenUsageRepository
 import com.faster.note.data.repository.MessageRole
 import com.faster.note.data.repository.ScheduleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +32,8 @@ data class AiChatUiState(
     val inputText: String = "",
     val error: String? = null,
     val apiKeyConfigured: Boolean = false,
-    val messageCount: Int = 0
+    val messageCount: Int = 0,
+    val tokenRecords: List<TokenUsageRecord> = emptyList()
 )
 
 class AiChatViewModel : ViewModel() {
@@ -49,6 +53,12 @@ class AiChatViewModel : ViewModel() {
                 messages = saved,
                 apiKeyConfigured = AiConfigRepository.apiKey.value.isNotBlank(),
                 messageCount = saved.size
+            )
+        }
+        viewModelScope.launch {
+            TokenUsageRepository.loadAll()
+            _uiState.value = _uiState.value.copy(
+                tokenRecords = TokenUsageRepository.getAllRecords()
             )
         }
         viewModelScope.launch {
@@ -117,6 +127,7 @@ class AiChatViewModel : ViewModel() {
 
                 // First API call with tools
                 var result = DeepSeekService.chatCompletion(apiKey, messages, systemPrompt, tools)
+                recordTokenUsage(result.usage)
 
                 // Tool calling loop — max 10 iterations
                 var loopCount = 0
@@ -133,6 +144,7 @@ class AiChatViewModel : ViewModel() {
                     }
 
                     result = DeepSeekService.chatCompletion(apiKey, messages, systemPrompt, tools)
+                    recordTokenUsage(result.usage)
                     loopCount++
                 }
 
@@ -191,6 +203,20 @@ class AiChatViewModel : ViewModel() {
 
     fun clearContext() {
         AiChatRepository.clearMessages()
+    }
+
+    private fun recordTokenUsage(usage: TokenUsage?) {
+        if (usage == null) return
+        val record = TokenUsageRecord(
+            timestamp = System.currentTimeMillis(),
+            promptTokens = usage.promptTokens,
+            completionTokens = usage.completionTokens,
+            totalTokens = usage.totalTokens
+        )
+        TokenUsageRepository.addRecord(record)
+        _uiState.value = _uiState.value.copy(
+            tokenRecords = TokenUsageRepository.getAllRecords()
+        )
     }
 
     // === Context filtering ===

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +35,8 @@ import java.util.*
 fun AiChatScreen(
     viewModel: AiChatViewModel,
     onBack: () -> Unit,
-    onNavigateToDay: (year: Int, month: Int, day: Int) -> Unit
+    onNavigateToDay: (year: Int, month: Int, day: Int) -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -57,8 +59,14 @@ fun AiChatScreen(
         }
     }
 
-    // Auto-scroll to latest message when new ones arrive;
-    // also ensures displayCount catches up on async initial load
+    // Non-animated initial scroll to latest after layout
+    LaunchedEffect(Unit) {
+        if (displayMessages.isNotEmpty()) {
+            listState.scrollToItem(displayMessages.size - 1)
+        }
+    }
+
+    // Animated auto-scroll to latest when new messages arrive
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             if (displayCount < minOf(8, messages.size)) {
@@ -66,7 +74,7 @@ fun AiChatScreen(
             }
             if (displayMessages.isNotEmpty()) {
                 val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-                if (lastVisible == null || lastVisible.index >= displayMessages.size - 2) {
+                if (lastVisible != null && lastVisible.index >= displayMessages.size - 2) {
                     listState.animateScrollToItem(displayMessages.size - 1)
                 }
             }
@@ -83,21 +91,15 @@ fun AiChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("AI日程助手", style = MaterialTheme.typography.titleMedium)
-                    }
-                },
+                title = { Text("AI日程助手", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "AI 设置")
                     }
                 }
             )

@@ -1,43 +1,29 @@
 package com.faster.note.ui.settings
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.faster.note.data.db.entity.CategoryEntity
-import com.faster.note.data.repository.AiChatRepository
 import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val categories: List<CategoryEntity> = emptyList(),
     val isDarkMode: Boolean = false,
-    val apiKey: String = "",
-    val chatMessageCount: Int = 0
+    val apiKey: String = ""
 )
 
 class SettingsViewModel : ViewModel() {
 
     private val _isDarkMode = MutableStateFlow(false)
-    private val _chatMessageCount = MutableStateFlow(0)
-
-    init {
-        viewModelScope.launch {
-            AiChatRepository.messages.collect { messages ->
-                _chatMessageCount.value = messages.size
-            }
-        }
-    }
 
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
     val uiState: StateFlow<SettingsUiState> = combine(
         CategoryRepository.categories,
         _isDarkMode,
-        AiConfigRepository.apiKey,
-        _chatMessageCount
-    ) { categories, darkMode, apiKey, msgCount ->
-        SettingsUiState(categories = categories, isDarkMode = darkMode, apiKey = apiKey, chatMessageCount = msgCount)
+        AiConfigRepository.apiKey
+    ) { categories, darkMode, apiKey ->
+        SettingsUiState(categories = categories, isDarkMode = darkMode, apiKey = apiKey)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
 
     fun toggleDarkMode(enabled: Boolean) { _isDarkMode.value = enabled }
@@ -54,7 +40,4 @@ class SettingsViewModel : ViewModel() {
         AiConfigRepository.saveApiKey(key)
     }
 
-    fun clearAiContext() {
-        AiChatRepository.clearMessages()
-    }
 }
