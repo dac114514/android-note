@@ -2,8 +2,11 @@ package com.faster.note.ui.ai
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.faster.note.data.ai.ActionBlock
 import com.faster.note.data.ai.ActionParser
+import com.faster.note.data.ai.ActionType
 import com.faster.note.data.ai.DeepSeekService
+import com.faster.note.data.ai.ResponseBlock
 import com.faster.note.data.db.entity.ScheduleEntity
 import com.faster.note.data.repository.AiChatRepository
 import com.faster.note.data.repository.AiConfigRepository
