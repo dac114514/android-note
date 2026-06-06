@@ -57,12 +57,18 @@ fun AiChatScreen(
         }
     }
 
-    // Auto-scroll to latest message when new ones arrive
+    // Auto-scroll to latest message when new ones arrive;
+    // also ensures displayCount catches up on async initial load
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            if (lastVisible == null || lastVisible.index >= displayMessages.size - 2) {
-                listState.animateScrollToItem(displayMessages.size - 1)
+            if (displayCount < minOf(8, messages.size)) {
+                displayCount = minOf(8, messages.size)
+            }
+            if (displayMessages.isNotEmpty()) {
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+                if (lastVisible == null || lastVisible.index >= displayMessages.size - 2) {
+                    listState.animateScrollToItem(displayMessages.size - 1)
+                }
             }
         }
     }
