@@ -236,7 +236,7 @@ private fun AiBubble(
 private fun AiLoadingBubble() {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start
+        horizontalArrangement = Arrangement.Start
     ) {
         Surface(
             modifier = Modifier.size(32.dp),

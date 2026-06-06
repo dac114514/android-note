@@ -40,11 +40,11 @@ object AiChatRepository {
         if (!file.exists()) return@withContext emptyList()
         try {
             val text = file.readText()
-            if (text.isBlank()) emptyList().also { _messages.value = it }
+            if (text.isBlank()) emptyList<ChatMessage>().also { _messages.value = it }
             else JSONArray(text).let { arr ->
                 (0 until arr.length()).map { chatMessageFromJson(arr.getJSONObject(it)) }
             }.also { _messages.value = it }
-        } catch (_: Exception) { emptyList().also { _messages.value = it } }
+        } catch (_: Exception) { emptyList<ChatMessage>().also { _messages.value = it } }
     }
 
     fun saveMessage(msg: ChatMessage) {

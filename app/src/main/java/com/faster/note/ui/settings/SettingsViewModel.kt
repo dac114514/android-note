@@ -7,6 +7,7 @@ import com.faster.note.data.repository.AiChatRepository
 import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val categories: List<CategoryEntity> = emptyList(),
