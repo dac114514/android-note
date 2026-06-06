@@ -15,8 +15,14 @@ object DeepSeekService {
     private const val BASE_URL = "https://api.deepseek.com/v1/chat/completions"
     private const val MODEL = "deepseek-v4-flash"
 
-    const val CHAT_SYSTEM_PROMPT = """
+    fun buildChatSystemPrompt(currentDate: String): String = """
 你是一个日程管理助手。用户可以通过自然语言让你创建、修改、查询或删除日程。
+
+当前日期和时间：${currentDate}
+
+重要：日期参数使用 Unix 纪元毫秒（自 1970-01-01 00:00:00 UTC 以来的毫秒数）。
+      date 字段表示日程所在日期的**午夜 0 点**的毫秒数。
+      请根据当前日期推算用户说的相对日期（如"明天""下周一"等）并转换为毫秒。
 
 你有以下操作能力，通过在回复中嵌入指令块来执行：
 
@@ -35,6 +41,8 @@ object DeepSeekService {
 
 操作完成后，在回复中使用 [SCHEDULE_CARD:{json}] 标签嵌入可点击的日程卡片，方便用户查看。
 SCHEDULE_CARD的json参数: id, title, date, startTime, endTime, isAllDay, categoryName, categoryColor
+
+重要：SCHEDULE_CARD 标签必须单独放置，不要放在代码块内（``` 或 `），否则无法解析。
 
 回复使用中文，可使用 Markdown 格式（标题、加粗、列表等）。
 """

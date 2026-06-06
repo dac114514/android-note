@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.text.SimpleDateFormat
 import java.util.*
 
 data class AiChatUiState(
@@ -46,6 +47,14 @@ class AiChatViewModel : ViewModel() {
                 apiKeyConfigured = AiConfigRepository.apiKey.value.isNotBlank(),
                 messageCount = saved.size
             )
+        }
+        viewModelScope.launch {
+            AiChatRepository.messages.collect { messages ->
+                _uiState.value = _uiState.value.copy(
+                    messages = messages,
+                    messageCount = messages.size
+                )
+            }
         }
         viewModelScope.launch {
             AiChatRepository.clearVersion.collectLatest { version ->
@@ -89,8 +98,13 @@ class AiChatViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                val currentDate = buildCurrentDateString()
+                val todaySummary = buildTodaySummary()
+                val systemPrompt = DeepSeekService.buildChatSystemPrompt(currentDate) +
+                    if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
+
                 val currentMessages = _uiState.value.messages
-                var aiResponse = callDeepSeek(apiKey, currentMessages)
+                var aiResponse = callDeepSeek(apiKey, currentMessages, systemPrompt)
 
                 var maxLoops = 5
                 while (maxLoops-- > 0) {
@@ -113,7 +127,7 @@ class AiChatViewModel : ViewModel() {
                     aiResponse = DeepSeekService.sendChatMessage(
                         apiKey,
                         buildMessagePairs(_uiState.value.messages) + listOf("user" to "操作执行结果：\n$resultText\n请根据结果给用户回复。"),
-                        DeepSeekService.CHAT_SYSTEM_PROMPT
+                        systemPrompt
                     )
                 }
 
@@ -153,11 +167,11 @@ class AiChatViewModel : ViewModel() {
         AiChatRepository.clearMessages()
     }
 
-    private suspend fun callDeepSeek(apiKey: String, messages: List<ChatMessage>): String {
+    private suspend fun callDeepSeek(apiKey: String, messages: List<ChatMessage>, systemPrompt: String): String {
         return DeepSeekService.sendChatMessage(
             apiKey,
             buildMessagePairs(messages),
-            DeepSeekService.CHAT_SYSTEM_PROMPT
+            systemPrompt
         )
     }
 
@@ -170,6 +184,43 @@ class AiChatViewModel : ViewModel() {
             role to msg.content
         }
     }
+
+    // === Date helpers ===
+
+    private fun buildCurrentDateString(): String {
+        val sdf = SimpleDateFormat("yyyy年M月d日 EEEE", Locale.CHINESE)
+        return sdf.format(Date())
+    }
+
+    private fun getTodayDateRange(): Pair<Long, Long> {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val startOfDay = cal.timeInMillis
+        cal.add(Calendar.DAY_OF_MONTH, 1)
+        val startOfNextDay = cal.timeInMillis
+        return startOfDay to startOfNextDay
+    }
+
+    private fun buildTodaySummary(): String {
+        val (todayStart, todayEnd) = getTodayDateRange()
+        val todaySchedules = ScheduleRepository.schedules.value
+            .filter { it.date >= todayStart && it.date < todayEnd }
+            .sortedBy { it.date }
+        if (todaySchedules.isEmpty()) return ""
+
+        val cats = CategoryRepository.categories.value
+        val tf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        return todaySchedules.joinToString("\n") { s ->
+            val cat = cats.find { it.id == s.categoryId }
+            val timeInfo = if (s.isAllDay) "全天" else s.startTime?.let { tf.format(Date(it)) } ?: ""
+            "[${s.id}] ${s.title} $timeInfo ${cat?.name ?: ""} ${if (s.isCompleted) "[完成]" else "[待办]"}"
+        }
+    }
+
+    // === Action execution ===
 
     private fun executeActions(actions: List<ActionBlock>): List<String> {
         return actions.map { action ->
@@ -187,8 +238,13 @@ class AiChatViewModel : ViewModel() {
     }
 
     private fun executeCreate(json: JSONObject): String {
-        val title = json.getString("title")
-        val date = json.getLong("date")
+        val title = json.optString("title", "").ifBlank {
+            return "创建失败：缺少 title 参数"
+        }
+        val date = json.optLong("date", -1L).let {
+            if (it <= 0) return "创建失败：缺少或无效的 date 参数"
+            it
+        }
         val categoryName = json.optString("categoryName", "")
         val categoryId = if (categoryName.isNotBlank()) {
             CategoryRepository.categories.value.find {
@@ -199,8 +255,8 @@ class AiChatViewModel : ViewModel() {
         val schedule = ScheduleEntity(
             title = title,
             date = date,
-            startTime = if (json.has("startTime")) json.getLong("startTime") else null,
-            endTime = if (json.has("endTime")) json.getLong("endTime") else null,
+            startTime = optLongSafe(json, "startTime"),
+            endTime = optLongSafe(json, "endTime"),
             isAllDay = json.optBoolean("isAllDay", false),
             categoryId = categoryId,
             notes = json.optString("notes", null)
@@ -219,7 +275,7 @@ class AiChatViewModel : ViewModel() {
         if (schedules.isEmpty()) return "该日期范围内没有日程"
 
         val cats = CategoryRepository.categories.value
-        val sdf = java.text.SimpleDateFormat("M月d日", java.util.Locale.CHINESE)
+        val sdf = SimpleDateFormat("M月d日", Locale.CHINESE)
         val cal = Calendar.getInstance()
 
         val sb = StringBuilder()
@@ -231,7 +287,7 @@ class AiChatViewModel : ViewModel() {
             val catName = if (cat != null) "(${cat.name})" else ""
             val time = if (s.isAllDay) "全天"
             else if (s.startTime != null) {
-                val tf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                val tf = SimpleDateFormat("HH:mm", Locale.getDefault())
                 "${tf.format(Date(s.startTime))}-${tf.format(Date(s.endTime ?: s.startTime))}"
             } else ""
             sb.appendLine("- [${s.id}] ${dateStr} $time ${s.title} $catName ${if (s.isCompleted) "[已完成]" else "[待完成]"}")
@@ -246,9 +302,16 @@ class AiChatViewModel : ViewModel() {
 
         var updated = existing
         if (json.has("title")) updated = updated.copy(title = json.getString("title"))
-        if (json.has("date")) updated = updated.copy(date = json.getLong("date"))
-        if (json.has("startTime")) updated = updated.copy(startTime = json.optLong("startTime"))
-        if (json.has("endTime")) updated = updated.copy(endTime = json.optLong("endTime"))
+        if (json.has("date")) {
+            val newDate = json.optLong("date", -1L)
+            if (newDate > 0) updated = updated.copy(date = newDate)
+        }
+        if (json.has("startTime")) {
+            optLongSafe(json, "startTime")?.let { updated = updated.copy(startTime = it) }
+        }
+        if (json.has("endTime")) {
+            optLongSafe(json, "endTime")?.let { updated = updated.copy(endTime = it) }
+        }
         if (json.has("isAllDay")) updated = updated.copy(isAllDay = json.getBoolean("isAllDay"))
         if (json.has("notes")) updated = updated.copy(notes = json.optString("notes"))
         if (json.has("isCompleted")) updated = updated.copy(isCompleted = json.getBoolean("isCompleted"))
@@ -269,5 +332,15 @@ class AiChatViewModel : ViewModel() {
         if (existing == null) return "未找到 ID 为 $id 的日程"
         ScheduleRepository.deleteSchedule(id)
         return "已删除日程：${existing.title}"
+    }
+
+    private fun optLongSafe(json: JSONObject, key: String): Long? {
+        if (!json.has(key)) return null
+        val v = json.opt(key)
+        return when (v) {
+            is Number -> v.toLong()
+            is String -> v.toLongOrNull()
+            else -> null
+        }
     }
 }

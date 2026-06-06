@@ -19,7 +19,15 @@ data class SettingsUiState(
 class SettingsViewModel : ViewModel() {
 
     private val _isDarkMode = MutableStateFlow(false)
-    private val _chatMessageCount = MutableStateFlow(AiChatRepository.getMessageCount())
+    private val _chatMessageCount = MutableStateFlow(0)
+
+    init {
+        viewModelScope.launch {
+            AiChatRepository.messages.collect { messages ->
+                _chatMessageCount.value = messages.size
+            }
+        }
+    }
 
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
@@ -47,9 +55,6 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun clearAiContext() {
-        viewModelScope.launch {
-            AiChatRepository.clearMessages()
-            _chatMessageCount.value = 0
-        }
+        AiChatRepository.clearMessages()
     }
 }

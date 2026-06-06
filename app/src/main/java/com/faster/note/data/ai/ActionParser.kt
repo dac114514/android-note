@@ -24,7 +24,11 @@ object ActionParser {
         setOf(RegexOption.DOT_MATCHES_ALL)
     )
     private val CARD_REGEX = Regex(
-        """\[SCHEDULE_CARD:\s*(\{.*?\})\s*]""",
+        """```?\s*\[SCHEDULE_CARD:\s*(\{.*?\})\s*]\s*```?""",
+        setOf(RegexOption.DOT_MATCHES_ALL)
+    )
+    private val FALLBACK_CARD_REGEX = Regex(
+        """\{[^}]*?"id"\s*:\s*\d+[^}]*?"title"\s*:\s*"[^"]*"[^}]*?\}""",
         setOf(RegexOption.DOT_MATCHES_ALL)
     )
 
@@ -39,26 +43,52 @@ object ActionParser {
     }
 
     fun parseScheduleCards(text: String): List<CardData> {
-        return CARD_REGEX.findAll(text).mapNotNull { match ->
+        val primary = CARD_REGEX.findAll(text).mapNotNull { match ->
             try {
-                val json = JSONObject(match.groupValues[1])
-                CardData(
-                    scheduleId = json.getLong("id"),
-                    title = json.getString("title"),
-                    date = json.getLong("date"),
-                    startTime = if (json.has("startTime")) json.getLong("startTime") else null,
-                    endTime = if (json.has("endTime")) json.getLong("endTime") else null,
-                    isAllDay = json.optBoolean("isAllDay", false),
-                    categoryName = json.optString("categoryName", ""),
-                    categoryColor = json.optInt("categoryColor", 0xFF1565C0.toInt())
-                )
+                parseCardJson(JSONObject(match.groupValues[1]))
             } catch (_: Exception) { null }
         }.toList()
+        if (primary.isNotEmpty()) return primary
+
+        return FALLBACK_CARD_REGEX.findAll(text).mapNotNull { match ->
+            try {
+                parseCardJson(JSONObject(match.value))
+            } catch (_: Exception) { null }
+        }.toList()
+    }
+
+    private fun parseCardJson(json: JSONObject): CardData? {
+        val id = json.optLong("id", -1L).takeIf { it > 0 }
+            ?: json.optLong("scheduleId", -1L).takeIf { it > 0 }
+            ?: return null
+        val title = json.optString("title", "").ifBlank { return null }
+        val date = json.optLong("date", 0L)
+        return CardData(
+            scheduleId = id,
+            title = title,
+            date = date,
+            startTime = optLongSafe(json, "startTime"),
+            endTime = optLongSafe(json, "endTime"),
+            isAllDay = json.optBoolean("isAllDay", false),
+            categoryName = json.optString("categoryName", ""),
+            categoryColor = json.optInt("categoryColor", 0xFF1565C0.toInt())
+        )
+    }
+
+    private fun optLongSafe(json: JSONObject, key: String): Long? {
+        if (!json.has(key)) return null
+        val v = json.opt(key)
+        return when (v) {
+            is Number -> v.toLong()
+            is String -> v.toLongOrNull()
+            else -> null
+        }
     }
 
     fun stripTags(text: String): String {
         var result = text.replace(ACTION_REGEX, "").trim()
         result = CARD_REGEX.replace(result, "").trim()
+        result = FALLBACK_CARD_REGEX.replace(result, "").trim()
         return result
     }
 }

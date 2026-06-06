@@ -65,7 +65,7 @@ fun AiChatScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("AI 制定日程", style = MaterialTheme.typography.titleMedium)
+                        Text("AI日程助手", style = MaterialTheme.typography.titleMedium)
                     }
                 },
                 navigationIcon = {
@@ -104,7 +104,7 @@ fun AiChatScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "描述你想安排的日程",
+                            "描述你的日程安排",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
