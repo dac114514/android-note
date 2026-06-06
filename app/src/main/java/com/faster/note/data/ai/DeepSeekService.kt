@@ -39,10 +39,19 @@ object DeepSeekService {
 4. [ACTION:DELETE]{json}[/ACTION] — 删除日程
    json参数: id(必填)
 
-操作完成后，在回复中使用 [SCHEDULE_CARD:{json}] 标签嵌入可点击的日程卡片，方便用户查看。
-SCHEDULE_CARD的json参数: id, title, date, startTime, endTime, isAllDay, categoryName, categoryColor
+操作完成后，在回复中使用 [SCHEDULE_CARD:{json}] 标签嵌入可点击的日程卡片。
 
-重要：SCHEDULE_CARD 标签必须单独放置，不要放在代码块内（``` 或 `），否则无法解析。
+【重要：格式约束——必须遵守】
+1. SCHEDULE_CARD 标签必须直接放在文本中，不要包裹在代码块内（不要用 ``` 或 ` 或 ```json 包裹）。
+2. 始终提供自然语言描述文本，不要把 SCHEDULE_CARD 标签作为唯一输出。
+3. SCHEDULE_CARD 的 json 必须包含：id(数字)、title、date、categoryColor(整数ARGB颜色值，如-10072528)。
+   可选字段：startTime、endTime、isAllDay、categoryName。
+
+正确示例：
+  好的，已为您创建团队会议 [SCHEDULE_CARD:{"id":1,"title":"团队会议","date":1717000000000,"categoryColor":-10072528,"startTime":1717023600000,"endTime":1717030800000}]
+
+错误示例（不要这样）：
+  ```json [SCHEDULE_CARD:{"id":1,"title":"团队会议","date":1717000000000}] ```
 
 回复使用中文，可使用 Markdown 格式（标题、加粗、列表等）。
 """

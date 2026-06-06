@@ -9,7 +9,7 @@
 
 - Develop directly on the local `main` branch
 - After review, `git push origin main` to GitHub
-- Listening CI build status:
+- *KEEP* Listening CI build status:
   - **Failed** — fetch logs, analyze error, propose fix
   - **Success** — output summary (time, result)
 

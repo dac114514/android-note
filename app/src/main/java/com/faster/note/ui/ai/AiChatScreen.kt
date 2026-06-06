@@ -20,7 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.faster.note.data.ai.ActionParser
 import com.faster.note.data.ai.CardData
+import com.faster.note.data.ai.ResponseBlock
 import com.faster.note.data.repository.MessageRole
 import com.faster.note.ui.components.MarkdownText
 import java.text.SimpleDateFormat
@@ -188,48 +190,71 @@ private fun AiBubble(
     cards: List<CardData>,
     onCardClick: (CardData) -> Unit
 ) {
-    Column(
+    val blocks = remember(content, cards) { buildDisplayBlocks(content, cards) }
+    if (blocks.isEmpty()) return
+
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start
+        horizontalArrangement = Arrangement.Start
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Surface(
-                modifier = Modifier.size(32.dp),
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+        Surface(
+            modifier = Modifier.size(32.dp),
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
-            Spacer(Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                if (content.isNotBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            MarkdownText(
-                                text = content,
-                                modifier = Modifier.padding(bottom = if (cards.isNotEmpty()) 8.dp else 0.dp)
+        }
+        Spacer(Modifier.width(8.dp))
+        Surface(
+            shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                for (block in blocks) {
+                    when (block) {
+                        is ResponseBlock.Text -> {
+                            if (block.content.isNotBlank()) {
+                                MarkdownText(text = block.content)
+                            }
+                        }
+                        is ResponseBlock.Card -> {
+                            Spacer(Modifier.height(6.dp))
+                            ScheduleCardCompact(
+                                card = block.data,
+                                onClick = { onCardClick(block.data) }
                             )
                         }
                     }
                 }
-
-                cards.forEach { card ->
-                    Spacer(Modifier.height(6.dp))
-                    ScheduleCardCompact(card = card, onClick = { onCardClick(card) })
-                }
             }
         }
     }
+}
+
+/**
+ * Build display blocks from stored content and cards.
+ * When the original full response is available (content has tags embedded), parseResponseBlocks
+ * recovers the original text+card order. Otherwise, append cards after text.
+ */
+private fun buildDisplayBlocks(content: String, cards: List<CardData>): List<ResponseBlock> {
+    val fromParser = ActionParser.parseResponseBlocks(content)
+    val hasCards = fromParser.any { it is ResponseBlock.Card }
+    if (hasCards) return fromParser
+
+    // No cards found in content text — append stored cards after text blocks
+    val blocks = mutableListOf<ResponseBlock>()
+    if (content.isNotBlank()) {
+        blocks.add(ResponseBlock.Text(content))
+    }
+    cards.forEach { blocks.add(ResponseBlock.Card(it)) }
+    return blocks
 }
 
 @Composable
@@ -305,7 +330,7 @@ private fun InputCard(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "AI 可创建、修改、查询和删除日程 · 支持自然语言",
+                text = "AI可能会犯错，请注意甄别",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)

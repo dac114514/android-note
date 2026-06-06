@@ -2,9 +2,7 @@ package com.faster.note.ui.ai
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.faster.note.data.ai.ActionBlock
 import com.faster.note.data.ai.ActionParser
-import com.faster.note.data.ai.ActionType
 import com.faster.note.data.ai.DeepSeekService
 import com.faster.note.data.db.entity.ScheduleEntity
 import com.faster.note.data.repository.AiChatRepository
@@ -103,41 +101,44 @@ class AiChatViewModel : ViewModel() {
                 val systemPrompt = DeepSeekService.buildChatSystemPrompt(currentDate) +
                     if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
 
-                val currentMessages = _uiState.value.messages
-                var aiResponse = callDeepSeek(apiKey, currentMessages, systemPrompt)
+                // First API call
+                var aiResponse = DeepSeekService.sendChatMessage(
+                    apiKey,
+                    buildMessagePairs(_uiState.value.messages),
+                    systemPrompt
+                )
 
-                var maxLoops = 5
-                while (maxLoops-- > 0) {
+                // Silent ReAct loop — no UI updates, preserves original responses for context
+                var loopCount = 0
+                while (loopCount < 5) {
                     val actions = ActionParser.parseActions(aiResponse)
                     if (actions.isEmpty()) break
 
                     val results = executeActions(actions)
                     val resultText = results.joinToString("\n") { it }
 
-                    val cleanPartial = ActionParser.stripTags(aiResponse)
-                    val intermediateAiMsg = ChatMessage(
-                        id = ++messageIdCounter,
-                        role = MessageRole.AI,
-                        content = cleanPartial.ifBlank { "(正在处理您的请求...)" }
-                    )
+                    // Preserve original aiResponse (with tags) as assistant context for follow-up
+                    val apiMessages = buildMessagePairs(_uiState.value.messages) +
+                        listOf("assistant" to aiResponse) +
+                        listOf("user" to "操作执行结果：\n$resultText\n请根据结果给用户回复。")
 
-                    val withIntermediate = _uiState.value.messages + intermediateAiMsg
-                    _uiState.value = _uiState.value.copy(messages = withIntermediate)
-
-                    aiResponse = DeepSeekService.sendChatMessage(
-                        apiKey,
-                        buildMessagePairs(_uiState.value.messages) + listOf("user" to "操作执行结果：\n$resultText\n请根据结果给用户回复。"),
-                        systemPrompt
-                    )
+                    aiResponse = DeepSeekService.sendChatMessage(apiKey, apiMessages, systemPrompt)
+                    loopCount++
                 }
 
-                val cards = ActionParser.parseScheduleCards(aiResponse)
-                val cleanContent = ActionParser.stripTags(aiResponse)
+                // Single final response — parse blocks inline
+                val blocks = ActionParser.parseResponseBlocks(aiResponse)
+                val displayText = blocks
+                    .filterIsInstance<ResponseBlock.Text>()
+                    .joinToString("") { it.content }
+                val cards = blocks
+                    .filterIsInstance<ResponseBlock.Card>()
+                    .map { it.data }
 
                 val aiMsg = ChatMessage(
                     id = ++messageIdCounter,
                     role = MessageRole.AI,
-                    content = cleanContent,
+                    content = displayText,
                     scheduleCards = cards
                 )
 
@@ -165,14 +166,6 @@ class AiChatViewModel : ViewModel() {
 
     fun clearContext() {
         AiChatRepository.clearMessages()
-    }
-
-    private suspend fun callDeepSeek(apiKey: String, messages: List<ChatMessage>, systemPrompt: String): String {
-        return DeepSeekService.sendChatMessage(
-            apiKey,
-            buildMessagePairs(messages),
-            systemPrompt
-        )
     }
 
     private fun buildMessagePairs(messages: List<ChatMessage>): List<Pair<String, String>> {
