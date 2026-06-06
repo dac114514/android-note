@@ -4,6 +4,7 @@ import com.faster.note.data.ai.CardData
 import com.faster.note.data.local.DataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ data class ChatMessage(
 enum class MessageRole { USER, AI }
 
 object AiChatRepository {
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
@@ -35,7 +37,7 @@ object AiChatRepository {
         if (!file.exists()) return@withContext emptyList()
         try {
             val text = file.readText()
-            if (text.isBlank()) emptyList()
+            if (text.isBlank()) emptyList().also { _messages.value = it }
             else JSONArray(text).let { arr ->
                 (0 until arr.length()).map { chatMessageFromJson(arr.getJSONObject(it)) }
             }.also { _messages.value = it }
@@ -61,7 +63,7 @@ object AiChatRepository {
 
     private fun persistAllAsync() {
         val data = _messages.value
-        CoroutineScope(Dispatchers.IO).launch {
+        ioScope.launch {
             val file = chatFile()
             file.writeText(JSONArray().apply {
                 data.forEach { put(chatMessageToJson(it)) }
