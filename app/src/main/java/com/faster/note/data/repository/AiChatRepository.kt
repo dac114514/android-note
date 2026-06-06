@@ -54,7 +54,7 @@ object AiChatRepository {
 
     fun clearMessages() {
         _messages.value = emptyList()
-        persistAllAsync()
+        chatFile().delete()
     }
 
     fun getMessageCount(): Int = _messages.value.size
