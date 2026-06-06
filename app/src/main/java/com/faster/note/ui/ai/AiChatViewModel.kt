@@ -26,7 +26,7 @@ data class AiChatUiState(
     val inputText: String = "",
     val error: String? = null,
     val apiKeyConfigured: Boolean = false,
-    val contextScheduleCount: Int = 0
+    val messageCount: Int = 0
 )
 
 class AiChatViewModel : ViewModel() {
@@ -43,7 +43,7 @@ class AiChatViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(
                 messages = saved,
                 apiKeyConfigured = AiConfigRepository.apiKey.value.isNotBlank(),
-                contextScheduleCount = saved.size
+                messageCount = saved.size
             )
         }
     }
@@ -119,7 +119,7 @@ class AiChatViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     messages = finalMessages,
                     isLoading = false,
-                    contextScheduleCount = finalMessages.size
+                    messageCount = finalMessages.size
                 )
 
                 AiChatRepository.saveMessages(finalMessages)
@@ -143,7 +143,7 @@ class AiChatViewModel : ViewModel() {
             messageIdCounter = 0L
             _uiState.value = _uiState.value.copy(
                 messages = emptyList(),
-                contextScheduleCount = 0
+                messageCount = 0
             )
         }
     }
