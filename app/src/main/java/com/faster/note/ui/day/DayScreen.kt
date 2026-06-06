@@ -27,12 +27,12 @@ import java.util.*
 @Composable
 fun DayScreen(
     viewModel: DayViewModel,
-    onNavigateToMonth: () -> Unit
+    onNavigateToMonth: () -> Unit,
+    onNavigateToAiChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var editingSchedule by remember { mutableStateOf<ScheduleEntity?>(null) }
-    var showAiDialog by remember { mutableStateOf(false) }
     var showApiKeyDialog by remember { mutableStateOf(false) }
 
     val dateFormat = remember { SimpleDateFormat("M月d日 EEEE", Locale.CHINESE) }
@@ -149,19 +149,18 @@ fun DayScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                // AI analyze button
+                // AI scheduling button
                 SmallFloatingActionButton(
                     onClick = {
                         if (uiState.aiApiKeyConfigured) {
-                            showAiDialog = true
-                            viewModel.requestDayAiAnalysis()
+                            onNavigateToAiChat()
                         } else {
                             showApiKeyDialog = true
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = "AI 分析", modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.AutoAwesome, contentDescription = "AI 制定日程", modifier = Modifier.size(22.dp))
                 }
 
                 // Add schedule button
@@ -193,62 +192,6 @@ fun DayScreen(
                 showBottomSheet = false
             }) else null,
             onDismiss = { showBottomSheet = false }
-        )
-    }
-
-    // AI analysis dialog
-    if (showAiDialog) {
-        AlertDialog(
-            onDismissRequest = { showAiDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("今日 AI 分析")
-                }
-            },
-            text = {
-                Column {
-                    if (uiState.aiLoading) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Text("AI 分析中...", style = MaterialTheme.typography.bodySmall)
-                        }
-                    } else if (uiState.aiError != null) {
-                        Text(
-                            text = uiState.aiError!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = { viewModel.requestDayAiAnalysis() }) {
-                            Text("重试")
-                        }
-                    } else if (uiState.aiAnalysisText.isNotBlank()) {
-                        Text(
-                            text = uiState.aiAnalysisText,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    } else {
-                        Text(
-                            "暂无日程数据",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAiDialog = false }) {
-                    Text("关闭")
-                }
-            }
         )
     }
 
