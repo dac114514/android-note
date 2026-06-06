@@ -2,6 +2,7 @@ package com.faster.note.ui.ai
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.faster.note.data.ai.ActionBlock
 import com.faster.note.data.ai.ActionParser
 import com.faster.note.data.ai.ActionType
 import com.faster.note.data.ai.DeepSeekService
