@@ -53,15 +53,18 @@ object ScheduleRepository {
         mock
     }
 
-    fun saveSchedule(schedule: ScheduleEntity) {
+    fun saveSchedule(schedule: ScheduleEntity): Long {
         val now = System.currentTimeMillis()
+        val newId: Long
         _schedules.value = if (schedule.id == 0L) {
-            val newId = (_schedules.value.maxOfOrNull { it.id } ?: 0) + 1
+            newId = (_schedules.value.maxOfOrNull { it.id } ?: 0) + 1
             _schedules.value + schedule.copy(id = newId, createdAt = now, updatedAt = now)
         } else {
+            newId = schedule.id
             _schedules.value.map { if (it.id == schedule.id) schedule.copy(updatedAt = now) else it }
         }
         persistDate(schedule.date)
+        return newId
     }
 
     fun deleteSchedule(id: Long) {

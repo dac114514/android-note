@@ -29,6 +29,9 @@ object AiChatRepository {
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
+    private val _clearVersion = MutableStateFlow(0L)
+    val clearVersion: StateFlow<Long> = _clearVersion.asStateFlow()
+
     private fun chatFile(): File =
         File(DataStore.appContext.filesDir, "ai_chat_history.json")
 
@@ -56,6 +59,7 @@ object AiChatRepository {
 
     fun clearMessages() {
         _messages.value = emptyList()
+        _clearVersion.value += 1
         chatFile().delete()
     }
 

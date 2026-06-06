@@ -76,7 +76,6 @@ fun AppNavHost(
                 onNavigateToDay = { year, month, day ->
                     dayViewModel.goToDate(year, month, day)
                     navController.navigate(Routes.DAY) {
-                        popUpTo(Routes.DAY) { inclusive = true }
                         launchSingleTop = true
                     }
                 }

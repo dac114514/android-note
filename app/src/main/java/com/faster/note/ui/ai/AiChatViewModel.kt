@@ -16,6 +16,7 @@ import com.faster.note.data.repository.ScheduleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.*
@@ -45,6 +46,17 @@ class AiChatViewModel : ViewModel() {
                 apiKeyConfigured = AiConfigRepository.apiKey.value.isNotBlank(),
                 messageCount = saved.size
             )
+        }
+        viewModelScope.launch {
+            AiChatRepository.clearVersion.collectLatest { version ->
+                if (version > 0L) {
+                    messageIdCounter = 0L
+                    _uiState.value = _uiState.value.copy(
+                        messages = emptyList(),
+                        messageCount = 0
+                    )
+                }
+            }
         }
     }
 
@@ -138,14 +150,7 @@ class AiChatViewModel : ViewModel() {
     }
 
     fun clearContext() {
-        viewModelScope.launch {
-            AiChatRepository.clearMessages()
-            messageIdCounter = 0L
-            _uiState.value = _uiState.value.copy(
-                messages = emptyList(),
-                messageCount = 0
-            )
-        }
+        AiChatRepository.clearMessages()
     }
 
     private suspend fun callDeepSeek(apiKey: String, messages: List<ChatMessage>): String {
@@ -200,8 +205,8 @@ class AiChatViewModel : ViewModel() {
             categoryId = categoryId,
             notes = json.optString("notes", null)
         )
-        ScheduleRepository.saveSchedule(schedule)
-        return "已创建日程：$title (ID: ${schedule.id})"
+        val scheduleId = ScheduleRepository.saveSchedule(schedule)
+        return "已创建日程：$title (ID: $scheduleId)"
     }
 
     private fun executeRead(json: JSONObject): String {
