@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.faster.note.data.ai.CardData
-import com.faster.note.data.repository.ChatMessage
 import com.faster.note.data.repository.MessageRole
 import com.faster.note.ui.components.MarkdownText
 import java.text.SimpleDateFormat
@@ -36,10 +35,21 @@ fun AiChatScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.size - 1)
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            if (lastVisible == null || lastVisible.index >= uiState.messages.size - 2) {
+                listState.animateScrollToItem(uiState.messages.size - 1)
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(message = error, actionLabel = "关闭")
+            viewModel.clearError()
         }
     }
 
@@ -64,6 +74,15 @@ fun AiChatScreen(
                     }
                 }
             )
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            InputCard(
+                text = uiState.inputText,
+                onTextChange = viewModel::updateInputText,
+                onSend = viewModel::sendMessage,
+                enabled = !uiState.isLoading
+            )
         }
     ) { innerPadding ->
         Box(
@@ -71,99 +90,72 @@ fun AiChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-
-                if (uiState.messages.isEmpty() && !uiState.isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                "描述你想安排的日程",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "例如：",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                            Text(
-                                "\"明天下午3点创建一个团队会议\"",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                "\"帮我看看这周有什么安排\"",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        state = listState,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(uiState.messages, key = { it.id }) { msg ->
-                            when (msg.role) {
-                                MessageRole.USER -> UserBubble(msg.content)
-                                MessageRole.AI -> AiBubble(
-                                    content = msg.content,
-                                    cards = msg.scheduleCards,
-                                    onCardClick = { card ->
-                                        val cal = Calendar.getInstance().apply { timeInMillis = card.date }
-                                        onNavigateToDay(
-                                            cal.get(Calendar.YEAR),
-                                            cal.get(Calendar.MONTH) + 1,
-                                            cal.get(Calendar.DAY_OF_MONTH)
-                                        )
-                                    }
-                                )
-                            }
-                        }
-
-                        if (uiState.isLoading) {
-                            item {
-                                AiLoadingBubble()
-                            }
-                        }
+            if (uiState.messages.isEmpty() && !uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "描述你想安排的日程",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "例如：",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            "\"明天下午3点创建一个团队会议\"",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
+                        Text(
+                            "\"帮我看看这周有什么安排\"",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
                     }
                 }
-
-                InputCard(
-                    text = uiState.inputText,
-                    onTextChange = viewModel::updateInputText,
-                    onSend = viewModel::sendMessage,
-                    enabled = !uiState.isLoading
-                )
-            }
-
-            if (uiState.error != null) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    action = {
-                        TextButton(onClick = viewModel::clearError) {
-                            Text("关闭")
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.messages, key = { it.id }) { msg ->
+                        when (msg.role) {
+                            MessageRole.USER -> UserBubble(msg.content)
+                            MessageRole.AI -> AiBubble(
+                                content = msg.content,
+                                cards = msg.scheduleCards,
+                                onCardClick = { card ->
+                                    val cal = Calendar.getInstance().apply { timeInMillis = card.date }
+                                    onNavigateToDay(
+                                        cal.get(Calendar.YEAR),
+                                        cal.get(Calendar.MONTH) + 1,
+                                        cal.get(Calendar.DAY_OF_MONTH)
+                                    )
+                                }
+                            )
                         }
                     }
-                ) {
-                    Text(uiState.error ?: "")
+
+                    if (uiState.isLoading) {
+                        item {
+                            AiLoadingBubble()
+                        }
+                    }
                 }
             }
         }
@@ -217,12 +209,12 @@ private fun AiBubble(
             }
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        if (content.isNotBlank()) {
+                if (content.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
                             MarkdownText(
                                 text = content,
                                 modifier = Modifier.padding(bottom = if (cards.isNotEmpty()) 8.dp else 0.dp)
@@ -328,8 +320,9 @@ private fun ScheduleCardCompact(
     onClick: () -> Unit
 ) {
     val categoryColor = Color(card.categoryColor)
-    val sdf = SimpleDateFormat("M月d日 EEEE", Locale.CHINESE)
-    val cal = Calendar.getInstance().apply { timeInMillis = card.date }
+    val sdf = remember { SimpleDateFormat("M月d日 EEEE", Locale.CHINESE) }
+    val cal = remember { Calendar.getInstance() }
+    cal.timeInMillis = card.date
     val dateStr = sdf.format(cal.time)
 
     Card(
@@ -364,7 +357,7 @@ private fun ScheduleCardCompact(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (!card.isAllDay && card.startTime != null) {
-                    val tf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    val tf = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
                     val timeStr = if (card.endTime != null)
                         "${tf.format(Date(card.startTime))} - ${tf.format(Date(card.endTime))}"
                     else tf.format(Date(card.startTime))
