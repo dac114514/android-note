@@ -104,7 +104,7 @@ private fun renderTable(rows: List<String>) {
             ) {
                 header.forEach { cell ->
                     Text(
-                        text = cell,
+                        text = parseBold(cell),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
@@ -133,7 +133,7 @@ private fun renderTable(rows: List<String>) {
                     val paddedRow = row + List(maxOf(0, header.size - row.size)) { "" }
                     paddedRow.take(header.size).forEach { cell ->
                         Text(
-                            text = cell,
+                            text = parseBold(cell),
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f),
                             maxLines = 2,

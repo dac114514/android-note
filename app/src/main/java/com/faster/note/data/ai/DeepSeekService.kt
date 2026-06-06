@@ -1,5 +1,6 @@
 package com.faster.note.data.ai
 
+import com.faster.note.data.db.entity.CategoryEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -26,7 +27,10 @@ object DeepSeekService {
     private const val BASE_URL = "https://api.deepseek.com/v1/chat/completions"
     private const val MODEL = "deepseek-v4-flash"
 
-    fun buildChatSystemPrompt(dateStr: String, todayStartMillis: Long, weekday: String): String = """
+    fun buildChatSystemPrompt(
+        dateStr: String, todayStartMillis: Long, weekday: String,
+        categories: List<CategoryEntity> = emptyList()
+    ): String = """
 你是一个日程管理助手。用户可以通过自然语言让你创建、修改、查询或删除日程。
 
 现在时间：${dateStr}
@@ -39,6 +43,11 @@ object DeepSeekService {
 - 后天 = ${todayStartMillis} + 172800000 = ${todayStartMillis + 172800000L}
 - 星期计算：今天星期${weekday}，下周一 = 今天 + ((8 - 今天星期几的数字) % 7) 天，下周二 = 下周一 + 86400000，依此类推
 
+【分组（类别）信息】
+当前可用的分组及对应颜色值（ARGB 整数格式）：
+${categories.joinToString("\n") { "- ${it.name} (ARGB: ${it.color})" }}
+AI 生成 SCHEDULE_CARD 时，categoryColor 字段必须使用上面对应分组的颜色值，不允许猜测。
+
 【可用工具】
 你有以下工具可用：read_schedules, create_schedule, update_schedule_date, update_schedule_info, delete_schedule。
 当用户询问日程安排、分析日程或任何需要查询数据时，**必须**调用 read_schedules，不能仅凭上下文回答。
@@ -48,6 +57,11 @@ object DeepSeekService {
 调用 read_schedules(startDate=今天, endDate=今天) 查询找到会议 → 获得会议ID
 调用 update_schedule_info(id=会议ID, startTime=新的时间, endTime=新的结束时间) 修改时间
 AI 最终：根据工具返回的实际结果回复用户
+
+用户："把这个会议的标签改成学习"
+调用 read_schedules(startDate=今天, endDate=今天) 查询找到会议 → 获得会议ID
+调用 update_schedule_info(id=会议ID, categoryName="学习") 修改分组/标签
+注意：修改分组（标签/分类）使用 categoryName 参数，不使用 title 参数。
 
 【SCHEDULE_CARD 格式】
 操作完成后，在回复中使用 [SCHEDULE_CARD:{json}] 标签嵌入可点击的日程卡片。
@@ -76,7 +90,7 @@ AI 最终：根据工具返回的实际结果回复用户
 - 回复使用中文，可使用 Markdown 格式（标题、加粗、列表等）。
 """
 
-    fun buildToolsJson(): JSONArray = JSONArray().apply {
+    fun buildToolsJson(categories: List<CategoryEntity> = emptyList()): JSONArray = JSONArray().apply {
         put(toolObject("read_schedules", "读取指定日期范围内的所有日程。当用户询问日程安排、分析日程或任何需要查询日程数据时，必须调用此工具，不能仅凭上下文回答。", JSONObject().apply {
             put("type", "object")
             put("properties", JSONObject().apply {
@@ -116,7 +130,7 @@ AI 最终：根据工具返回的实际结果回复用户
                 })
                 put("categoryName", JSONObject().apply {
                     put("type", "string")
-                    put("description", "分组名称（可选，可选值：工作/个人/学习/健康）")
+                    put("description", "分组/标签名称（可选，可选值：${categories.joinToString("、") { it.name }}）")
                 })
                 put("notes", JSONObject().apply {
                     put("type", "string")
@@ -164,7 +178,7 @@ AI 最终：根据工具返回的实际结果回复用户
                 })
                 put("categoryName", JSONObject().apply {
                     put("type", "string")
-                    put("description", "分组名称（可选值：工作/个人/学习/健康）")
+                    put("description", "分组/标签名称（可选值：${categories.joinToString("、") { it.name }}）。注意：改标签/分组用此字段")
                 })
                 put("isCompleted", JSONObject().apply {
                     put("type", "boolean")

@@ -101,12 +101,13 @@ class AiChatViewModel : ViewModel() {
             try {
                 val epochCtx = buildEpochContext()
                 val todaySummary = buildTodaySummary()
+                val categories = CategoryRepository.categories.value
                 val systemPrompt = DeepSeekService.buildChatSystemPrompt(
-                    epochCtx.dateStr, epochCtx.todayStartMillis, epochCtx.weekday
+                    epochCtx.dateStr, epochCtx.todayStartMillis, epochCtx.weekday, categories
                 ) + if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
 
                 val messages = buildMessagesJson()
-                val tools = DeepSeekService.buildToolsJson()
+                val tools = DeepSeekService.buildToolsJson(categories)
 
                 // First API call with tools
                 var result = DeepSeekService.chatCompletion(apiKey, messages, systemPrompt, tools)
@@ -142,11 +143,19 @@ class AiChatViewModel : ViewModel() {
                     .filterIsInstance<ResponseBlock.Card>()
                     .map { it.data }
 
+                // Correct categoryColor by looking up real colors from CategoryRepository
+                val correctedCards = cards.map { card ->
+                    if (card.categoryName.isNotBlank()) {
+                        val cat = categories.find { it.name.equals(card.categoryName, ignoreCase = true) }
+                        if (cat != null && cat.color != card.categoryColor) card.copy(categoryColor = cat.color) else card
+                    } else card
+                }
+
                 val aiMsg = ChatMessage(
                     id = ++messageIdCounter,
                     role = MessageRole.AI,
                     content = displayText,
-                    scheduleCards = cards
+                    scheduleCards = correctedCards
                 )
 
                 val finalMessages = _uiState.value.messages + aiMsg
