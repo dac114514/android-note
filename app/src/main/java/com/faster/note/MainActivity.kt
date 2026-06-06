@@ -32,6 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.faster.note.data.AppUpdaterService
 import com.faster.note.data.local.DataStore
+import com.faster.note.ui.ai.AiChatViewModel
 import com.faster.note.ui.about.AboutActivity
 import com.faster.note.ui.day.DayViewModel
 import com.faster.note.ui.month.MonthViewModel
@@ -58,6 +59,7 @@ class MainActivity : ComponentActivity() {
             val dayViewModel: DayViewModel = viewModel()
             val monthViewModel: MonthViewModel = viewModel()
             val settingsViewModel: SettingsViewModel = viewModel()
+            val aiChatViewModel: AiChatViewModel = viewModel()
 
             ScheduleAppTheme(darkTheme = isDarkMode) {
                 val navController = rememberNavController()
@@ -112,6 +114,7 @@ class MainActivity : ComponentActivity() {
                             dayViewModel = dayViewModel,
                             monthViewModel = monthViewModel,
                             settingsViewModel = settingsViewModel,
+                            aiChatViewModel = aiChatViewModel,
                             isDarkMode = isDarkMode,
                             onToggleDarkMode = { isDarkMode = it },
                             onCheckUpdate = {

@@ -1,6 +1,7 @@
 package com.faster.note.data.local
 
 import android.content.Context
+import com.faster.note.data.repository.AiChatRepository
 import com.faster.note.data.repository.AiConfigRepository
 import com.faster.note.data.repository.CategoryRepository
 import com.faster.note.data.repository.ScheduleRepository
@@ -19,6 +20,7 @@ object DataStore {
             ScheduleRepository.loadAll()
             CategoryRepository.loadAll()
             AiConfigRepository.loadAll()
+            AiChatRepository.loadAll()
         }
     }
 }
