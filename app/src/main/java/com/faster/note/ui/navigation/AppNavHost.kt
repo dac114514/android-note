@@ -8,6 +8,8 @@ import com.faster.note.ui.day.DayScreen
 import com.faster.note.ui.day.DayViewModel
 import com.faster.note.ui.month.MonthScreen
 import com.faster.note.ui.month.MonthViewModel
+import com.faster.note.ui.ai.AiChatScreen
+import com.faster.note.ui.ai.AiChatViewModel
 import com.faster.note.ui.settings.SettingsScreen
 import com.faster.note.ui.settings.SettingsViewModel
 
@@ -15,6 +17,7 @@ object Routes {
     const val DAY = "day"
     const val MONTH = "month"
     const val SETTINGS = "settings"
+    const val AI_CHAT = "ai_chat"
 }
 
 @Composable
@@ -23,6 +26,7 @@ fun AppNavHost(
     dayViewModel: DayViewModel,
     monthViewModel: MonthViewModel,
     settingsViewModel: SettingsViewModel,
+    aiChatViewModel: AiChatViewModel,
     isDarkMode: Boolean = false,
     onToggleDarkMode: (Boolean) -> Unit = {},
     onCheckUpdate: () -> Unit = {},
@@ -32,7 +36,8 @@ fun AppNavHost(
         composable(Routes.DAY) {
             DayScreen(
                 viewModel = dayViewModel,
-                onNavigateToMonth = { navController.navigate(Routes.MONTH) }
+                onNavigateToMonth = { navController.navigate(Routes.MONTH) },
+                onNavigateToAiChat = { navController.navigate(Routes.AI_CHAT) }
             )
         }
         composable(Routes.MONTH) {
@@ -62,6 +67,19 @@ fun AppNavHost(
                 onToggleDarkMode = onToggleDarkMode,
                 onCheckUpdate = onCheckUpdate,
                 onOpenAbout = onOpenAbout
+            )
+        }
+        composable(Routes.AI_CHAT) {
+            AiChatScreen(
+                viewModel = aiChatViewModel,
+                onBack = { navController.popBackStack() },
+                onNavigateToDay = { year, month, day ->
+                    dayViewModel.goToDate(year, month, day)
+                    navController.navigate(Routes.DAY) {
+                        popUpTo(Routes.DAY) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
     }
