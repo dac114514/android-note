@@ -25,7 +25,7 @@ sealed class ResponseBlock {
 object ActionParser {
 
     private val ACTION_REGEX = Regex(
-        """\[ACTION:(CREATE|READ|UPDATE|DELETE)]\s*(\{.*?\})\s*\[/ACTION]""",
+        """\[ACTION:(CREATE|READ|UPDATE|DELETE)]\s*(\{(?:[^{}]|(?:\{[^{}]*\}))*\})\s*\[/ACTION]""",
         setOf(RegexOption.DOT_MATCHES_ALL)
     )
 

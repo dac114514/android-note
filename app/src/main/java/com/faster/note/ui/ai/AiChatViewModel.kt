@@ -99,10 +99,11 @@ class AiChatViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val currentDate = buildCurrentDateString()
+                val epochCtx = buildEpochContext()
                 val todaySummary = buildTodaySummary()
-                val systemPrompt = DeepSeekService.buildChatSystemPrompt(currentDate) +
-                    if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
+                val systemPrompt = DeepSeekService.buildChatSystemPrompt(
+                    epochCtx.dateStr, epochCtx.todayStartMillis, epochCtx.weekday
+                ) + if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
 
                 // First API call
                 var aiResponse = DeepSeekService.sendChatMessage(
@@ -123,7 +124,7 @@ class AiChatViewModel : ViewModel() {
                     // Preserve original aiResponse (with tags) as assistant context for follow-up
                     val apiMessages = buildMessagePairs(_uiState.value.messages) +
                         listOf("assistant" to aiResponse) +
-                        listOf("user" to "操作执行结果：\n$resultText\n请根据结果给用户回复。")
+                        listOf("user" to "操作执行结果（[SUCCESS] 表示成功，[ERROR] 表示失败）：\n$resultText\n请仔细阅读上述结果，根据实际执行情况回复用户。如果操作失败，必须告知用户失败原因。")
 
                     aiResponse = DeepSeekService.sendChatMessage(apiKey, apiMessages, systemPrompt)
                     loopCount++
@@ -183,9 +184,27 @@ class AiChatViewModel : ViewModel() {
 
     // === Date helpers ===
 
-    private fun buildCurrentDateString(): String {
-        val sdf = SimpleDateFormat("yyyy年M月d日 EEEE", Locale.CHINESE)
-        return sdf.format(Date())
+    private data class EpochContext(
+        val dateStr: String,
+        val todayStartMillis: Long,
+        val weekday: String
+    )
+
+    private fun buildEpochContext(): EpochContext {
+        val now = System.currentTimeMillis()
+        val sdf = SimpleDateFormat("yyyy年M月d日 EEEE HH:mm", Locale.CHINESE)
+        val tz = TimeZone.getDefault()
+        val gmtOffset = tz.getOffset(now) / 3600000
+        val tzStr = if (gmtOffset >= 0) "GMT+$gmtOffset" else "GMT$gmtOffset"
+        val dateStr = "${sdf.format(Date())} (${tzStr})"
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val todayStartMillis = cal.timeInMillis
+        val weekday = SimpleDateFormat("E", Locale.CHINESE).format(Date())
+        return EpochContext(dateStr, todayStartMillis, weekday)
     }
 
     private fun getTodayDateRange(): Pair<Long, Long> {
@@ -221,31 +240,35 @@ class AiChatViewModel : ViewModel() {
     private fun executeActions(actions: List<ActionBlock>): List<String> {
         return actions.map { action ->
             try {
-                when (action.type) {
+                val result = when (action.type) {
                     ActionType.CREATE -> executeCreate(action.payload)
                     ActionType.READ -> executeRead(action.payload)
                     ActionType.UPDATE -> executeUpdate(action.payload)
                     ActionType.DELETE -> executeDelete(action.payload)
                 }
+                "[SUCCESS] $result"
             } catch (e: Exception) {
-                "操作失败: ${e.message}"
+                "[ERROR] 操作失败: ${e.message}"
             }
         }
     }
 
     private fun executeCreate(json: JSONObject): String {
         val title = json.optString("title", "").ifBlank {
-            return "创建失败：缺少 title 参数"
+            return "[ERROR] 创建失败：缺少 title 参数"
         }
         val date = json.optLong("date", -1L).let {
-            if (it <= 0) return "创建失败：缺少或无效的 date 参数"
+            if (it <= 0) return "[ERROR] 创建失败：缺少或无效的 date 参数"
             it
         }
         val categoryName = json.optString("categoryName", "")
+        var categoryWarn = ""
         val categoryId = if (categoryName.isNotBlank()) {
             CategoryRepository.categories.value.find {
                 it.name.equals(categoryName, ignoreCase = true)
-            }?.id
+            }?.id.also {
+                if (it == null) categoryWarn = " [WARN] 未找到匹配的类别: $categoryName"
+            }
         } else null
 
         val schedule = ScheduleEntity(
@@ -258,7 +281,7 @@ class AiChatViewModel : ViewModel() {
             notes = json.optString("notes", null)
         )
         val scheduleId = ScheduleRepository.saveSchedule(schedule)
-        return "已创建日程：$title (ID: $scheduleId)"
+        return "已创建日程：$title (ID: $scheduleId)$categoryWarn"
     }
 
     private fun executeRead(json: JSONObject): String {
@@ -268,7 +291,7 @@ class AiChatViewModel : ViewModel() {
             .filter { it.date in startDate..endDate }
             .sortedBy { it.date }
 
-        if (schedules.isEmpty()) return "该日期范围内没有日程"
+        if (schedules.isEmpty()) return "[ERROR] 该日期范围内没有日程"
 
         val cats = CategoryRepository.categories.value
         val sdf = SimpleDateFormat("M月d日", Locale.CHINESE)
@@ -294,7 +317,7 @@ class AiChatViewModel : ViewModel() {
     private fun executeUpdate(json: JSONObject): String {
         val id = json.getLong("id")
         val existing = ScheduleRepository.schedules.value.find { it.id == id }
-            ?: return "未找到 ID 为 $id 的日程"
+            ?: return "[ERROR] 未找到 ID 为 $id 的日程"
 
         var updated = existing
         if (json.has("title")) updated = updated.copy(title = json.getString("title"))
@@ -316,6 +339,7 @@ class AiChatViewModel : ViewModel() {
                 it.name.equals(json.getString("categoryName"), ignoreCase = true)
             }
             if (cat != null) updated = updated.copy(categoryId = cat.id)
+            else updated = updated.copy(notes = (updated.notes?.plus("; ") ?: "") + "[WARN] 未找到匹配的类别: ${json.getString("categoryName")}")
         }
 
         ScheduleRepository.saveSchedule(updated)
@@ -325,7 +349,7 @@ class AiChatViewModel : ViewModel() {
     private fun executeDelete(json: JSONObject): String {
         val id = json.getLong("id")
         val existing = ScheduleRepository.schedules.value.find { it.id == id }
-        if (existing == null) return "未找到 ID 为 $id 的日程"
+        if (existing == null) return "[ERROR] 未找到 ID 为 $id 的日程"
         ScheduleRepository.deleteSchedule(id)
         return "已删除日程：${existing.title}"
     }
