@@ -2,10 +2,6 @@ package com.faster.note.data.ai
 
 import org.json.JSONObject
 
-data class ActionBlock(val type: ActionType, val payload: JSONObject)
-
-enum class ActionType { CREATE, READ, UPDATE, DELETE }
-
 data class CardData(
     val scheduleId: Long,
     val title: String,
@@ -23,11 +19,6 @@ sealed class ResponseBlock {
 }
 
 object ActionParser {
-
-    private val ACTION_REGEX = Regex(
-        """\[ACTION:(CREATE|READ|UPDATE|DELETE)]\s*(\{(?:[^{}]|(?:\{[^{}]*\}))*\})\s*\[/ACTION]""",
-        setOf(RegexOption.DOT_MATCHES_ALL)
-    )
 
     // Match [SCHEDULE_CARD:{json}] optionally wrapped in ``` or ```json
     private val FULL_CARD_REGEX = Regex(
@@ -47,16 +38,6 @@ object ActionParser {
         """\[/?SCHEDULE_CARD:?\]|```(?:json)?\s*""",
         setOf(RegexOption.IGNORE_CASE)
     )
-
-    fun parseActions(text: String): List<ActionBlock> {
-        return ACTION_REGEX.findAll(text).mapNotNull { match ->
-            try {
-                val type = ActionType.valueOf(match.groupValues[1])
-                val json = JSONObject(match.groupValues[2])
-                ActionBlock(type, json)
-            } catch (_: Exception) { null }
-        }.toList()
-    }
 
     /**
      * Parse AI response text into a list of ResponseBlocks (Text or Card).

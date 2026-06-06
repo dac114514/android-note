@@ -2,11 +2,10 @@ package com.faster.note.ui.ai
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.faster.note.data.ai.ActionBlock
 import com.faster.note.data.ai.ActionParser
-import com.faster.note.data.ai.ActionType
 import com.faster.note.data.ai.DeepSeekService
 import com.faster.note.data.ai.ResponseBlock
+import com.faster.note.data.ai.ToolCall
 import com.faster.note.data.db.entity.ScheduleEntity
 import com.faster.note.data.repository.AiChatRepository
 import com.faster.note.data.repository.AiConfigRepository
@@ -19,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
@@ -105,32 +105,35 @@ class AiChatViewModel : ViewModel() {
                     epochCtx.dateStr, epochCtx.todayStartMillis, epochCtx.weekday
                 ) + if (todaySummary.isNotBlank()) "\n\n今日已有日程：\n$todaySummary" else ""
 
-                // First API call
-                var aiResponse = DeepSeekService.sendChatMessage(
-                    apiKey,
-                    buildMessagePairs(_uiState.value.messages),
-                    systemPrompt
-                )
+                val messages = buildMessagesJson()
+                val tools = DeepSeekService.buildToolsJson()
 
-                // Silent ReAct loop — no UI updates, preserves original responses for context
+                // First API call with tools
+                var result = DeepSeekService.chatCompletion(apiKey, messages, systemPrompt, tools)
+
+                // Tool calling loop — max 10 iterations
                 var loopCount = 0
-                while (loopCount < 5) {
-                    val actions = ActionParser.parseActions(aiResponse)
-                    if (actions.isEmpty()) break
+                while (loopCount < 10 && result.toolCalls.isNotEmpty()) {
+                    // Add assistant message with tool_calls to history
+                    messages.put(buildAssistantToolCallMsg(result.toolCalls))
 
-                    val results = executeActions(actions)
-                    val resultText = results.joinToString("\n") { it }
+                    // Execute each tool call with verification + retry
+                    for (tc in result.toolCalls) {
+                        val execResult = executeToolWithRetry(tc.name, tc.arguments, maxRetries = 3)
+                        messages.put(JSONObject().apply {
+                            put("role", "tool")
+                            put("tool_call_id", tc.id)
+                            put("content", execResult)
+                        })
+                    }
 
-                    // Preserve original aiResponse (with tags) as assistant context for follow-up
-                    val apiMessages = buildMessagePairs(_uiState.value.messages) +
-                        listOf("assistant" to aiResponse) +
-                        listOf("user" to "操作执行结果（[SUCCESS] 表示成功，[ERROR] 表示失败）：\n$resultText\n请仔细阅读上述结果，根据实际执行情况回复用户。如果操作失败，必须告知用户失败原因。")
-
-                    aiResponse = DeepSeekService.sendChatMessage(apiKey, apiMessages, systemPrompt)
+                    result = DeepSeekService.chatCompletion(apiKey, messages, systemPrompt, tools)
                     loopCount++
                 }
 
-                // Single final response — parse blocks inline
+                val aiResponse = result.content
+
+                // Parse final response — extract text and card blocks
                 val blocks = ActionParser.parseResponseBlocks(aiResponse)
                 val displayText = blocks
                     .filterIsInstance<ResponseBlock.Text>()
@@ -172,13 +175,98 @@ class AiChatViewModel : ViewModel() {
         AiChatRepository.clearMessages()
     }
 
-    private fun buildMessagePairs(messages: List<ChatMessage>): List<Pair<String, String>> {
-        return messages.map { msg ->
+    // === Message building ===
+
+    private fun buildMessagesJson(): JSONArray = JSONArray().apply {
+        _uiState.value.messages.forEach { msg ->
             val role = when (msg.role) {
                 MessageRole.USER -> "user"
                 MessageRole.AI -> "assistant"
             }
-            role to msg.content
+            put(JSONObject().apply {
+                put("role", role)
+                put("content", msg.content)
+            })
+        }
+    }
+
+    private fun buildAssistantToolCallMsg(toolCalls: List<ToolCall>): JSONObject = JSONObject().apply {
+        put("role", "assistant")
+        put("content", null)
+        put("tool_calls", JSONArray().apply {
+            toolCalls.forEach { tc ->
+                put(JSONObject().apply {
+                    put("id", tc.id)
+                    put("type", "function")
+                    put("function", JSONObject().apply {
+                        put("name", tc.name)
+                        put("arguments", tc.arguments)
+                    })
+                })
+            }
+        })
+    }
+
+    // === Tool execution with verification and retry ===
+
+    private fun executeToolWithRetry(name: String, argsJson: String, maxRetries: Int): String {
+        val json = try { JSONObject(argsJson) } catch (_: Exception) { return "[ERROR] 无效的参数: $argsJson" }
+        var lastResult = ""
+        for (attempt in 0..maxRetries) {
+            val result = try {
+                when (name) {
+                    "create_schedule" -> executeCreate(json)
+                    "read_schedules" -> executeRead(json)
+                    "update_schedule_date" -> executeUpdateDate(json)
+                    "update_schedule_info" -> executeUpdateInfo(json)
+                    "delete_schedule" -> executeDelete(json)
+                    else -> "[ERROR] 未知工具: $name"
+                }
+            } catch (e: Exception) {
+                "[ERROR] 执行失败: ${e.message}"
+            }
+            lastResult = result
+
+            if (result.startsWith("[SUCCESS]")) {
+                val verified = verifyToolResult(name, json)
+                if (verified) return result
+                // Verification failed, retry
+                lastResult = "[RETRY] $result (验证未通过，第${attempt + 1}次重试)"
+            } else if (result.startsWith("[ERROR]")) {
+                // Parameter errors — don't retry, return immediately
+                return result
+            }
+        }
+        return lastResult
+    }
+
+    private fun verifyToolResult(name: String, json: JSONObject): Boolean {
+        return when (name) {
+            "create_schedule" -> {
+                val title = json.optString("title", "")
+                val date = json.optLong("date", -1L)
+                if (title.isBlank() || date <= 0) return true // can't verify, assume success
+                ScheduleRepository.schedules.value.any {
+                    it.title == title && kotlin.math.abs(it.date - date) < 3600000
+                }
+            }
+            "update_schedule_date" -> {
+                val id = json.optLong("id", -1L)
+                val newDate = json.optLong("date", -1L)
+                if (id <= 0 || newDate <= 0) return true
+                ScheduleRepository.schedules.value.find { it.id == id }
+                    ?.let { kotlin.math.abs(it.date - newDate) < 3600000 }
+                    ?: false
+            }
+            "update_schedule_info" -> {
+                val id = json.optLong("id", -1L)
+                id > 0 && ScheduleRepository.schedules.value.any { it.id == id }
+            }
+            "delete_schedule" -> {
+                val id = json.optLong("id", -1L)
+                id > 0 && ScheduleRepository.schedules.value.none { it.id == id }
+            }
+            else -> true
         }
     }
 
@@ -235,23 +323,7 @@ class AiChatViewModel : ViewModel() {
         }
     }
 
-    // === Action execution ===
-
-    private fun executeActions(actions: List<ActionBlock>): List<String> {
-        return actions.map { action ->
-            try {
-                val result = when (action.type) {
-                    ActionType.CREATE -> executeCreate(action.payload)
-                    ActionType.READ -> executeRead(action.payload)
-                    ActionType.UPDATE -> executeUpdate(action.payload)
-                    ActionType.DELETE -> executeDelete(action.payload)
-                }
-                "[SUCCESS] $result"
-            } catch (e: Exception) {
-                "[ERROR] 操作失败: ${e.message}"
-            }
-        }
-    }
+    // === Tool implementations ===
 
     private fun executeCreate(json: JSONObject): String {
         val title = json.optString("title", "").ifBlank {
@@ -281,12 +353,14 @@ class AiChatViewModel : ViewModel() {
             notes = json.optString("notes", null)
         )
         val scheduleId = ScheduleRepository.saveSchedule(schedule)
-        return "已创建日程：$title (ID: $scheduleId)$categoryWarn"
+        return "[SUCCESS] 已创建日程：$title (ID: $scheduleId)$categoryWarn"
     }
 
     private fun executeRead(json: JSONObject): String {
-        val startDate = json.getLong("startDate")
-        val endDate = json.getLong("endDate")
+        val startDate = json.optLong("startDate", -1L)
+        val endDate = json.optLong("endDate", -1L)
+        if (startDate <= 0 || endDate <= 0) return "[ERROR] 读取失败：缺少或无效的日期参数"
+
         val schedules = ScheduleRepository.schedules.value
             .filter { it.date in startDate..endDate }
             .sortedBy { it.date }
@@ -294,37 +368,49 @@ class AiChatViewModel : ViewModel() {
         if (schedules.isEmpty()) return "[ERROR] 该日期范围内没有日程"
 
         val cats = CategoryRepository.categories.value
-        val sdf = SimpleDateFormat("M月d日", Locale.CHINESE)
+        val dateFmt = SimpleDateFormat("yyyy-MM-dd(E)", Locale.CHINESE)
+        val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
         val cal = Calendar.getInstance()
 
-        val sb = StringBuilder()
-        sb.appendLine("共找到 ${schedules.size} 个日程：")
-        schedules.forEach { s ->
+        val sb = StringBuilder("[SUCCESS] 共找到 ${schedules.size} 个日程：\n")
+        schedules.forEachIndexed { index, s ->
             cal.timeInMillis = s.date
-            val dateStr = sdf.format(cal.time)
+            val dateStr = dateFmt.format(Date(s.date))
             val cat = cats.find { it.id == s.categoryId }
-            val catName = if (cat != null) "(${cat.name})" else ""
+            val catName = cat?.name ?: ""
             val time = if (s.isAllDay) "全天"
             else if (s.startTime != null) {
-                val tf = SimpleDateFormat("HH:mm", Locale.getDefault())
-                "${tf.format(Date(s.startTime))}-${tf.format(Date(s.endTime ?: s.startTime))}"
+                "${timeFmt.format(Date(s.startTime))}-${timeFmt.format(Date(s.endTime ?: s.startTime))}"
             } else ""
-            sb.appendLine("- [${s.id}] ${dateStr} $time ${s.title} $catName ${if (s.isCompleted) "[已完成]" else "[待完成]"}")
+            val status = if (s.isCompleted) "已完成" else "待完成"
+            sb.append("ID:${s.id} | $dateStr | $time | ${s.title} | $catName | $status")
+            if (index < schedules.size - 1) sb.append("\n")
         }
         return sb.toString()
     }
 
-    private fun executeUpdate(json: JSONObject): String {
-        val id = json.getLong("id")
+    private fun executeUpdateDate(json: JSONObject): String {
+        val id = json.optLong("id", -1L)
+        if (id <= 0) return "[ERROR] 修改失败：缺少或无效的 id 参数"
+        val newDate = json.optLong("date", -1L)
+        if (newDate <= 0) return "[ERROR] 修改失败：缺少或无效的 date 参数"
+
+        val existing = ScheduleRepository.schedules.value.find { it.id == id }
+            ?: return "[ERROR] 未找到 ID 为 $id 的日程"
+
+        ScheduleRepository.saveSchedule(existing.copy(date = newDate))
+        return "[SUCCESS] 已更新日程 [${existing.title}] 的日期"
+    }
+
+    private fun executeUpdateInfo(json: JSONObject): String {
+        val id = json.optLong("id", -1L)
+        if (id <= 0) return "[ERROR] 修改失败：缺少或无效的 id 参数"
+
         val existing = ScheduleRepository.schedules.value.find { it.id == id }
             ?: return "[ERROR] 未找到 ID 为 $id 的日程"
 
         var updated = existing
         if (json.has("title")) updated = updated.copy(title = json.getString("title"))
-        if (json.has("date")) {
-            val newDate = json.optLong("date", -1L)
-            if (newDate > 0) updated = updated.copy(date = newDate)
-        }
         if (json.has("startTime")) {
             optLongSafe(json, "startTime")?.let { updated = updated.copy(startTime = it) }
         }
@@ -332,8 +418,8 @@ class AiChatViewModel : ViewModel() {
             optLongSafe(json, "endTime")?.let { updated = updated.copy(endTime = it) }
         }
         if (json.has("isAllDay")) updated = updated.copy(isAllDay = json.getBoolean("isAllDay"))
-        if (json.has("notes")) updated = updated.copy(notes = json.optString("notes"))
         if (json.has("isCompleted")) updated = updated.copy(isCompleted = json.getBoolean("isCompleted"))
+        if (json.has("notes")) updated = updated.copy(notes = json.optString("notes"))
         if (json.has("categoryName")) {
             val cat = CategoryRepository.categories.value.find {
                 it.name.equals(json.getString("categoryName"), ignoreCase = true)
@@ -343,15 +429,16 @@ class AiChatViewModel : ViewModel() {
         }
 
         ScheduleRepository.saveSchedule(updated)
-        return "已更新日程：${updated.title}"
+        return "[SUCCESS] 已更新日程：${updated.title}"
     }
 
     private fun executeDelete(json: JSONObject): String {
-        val id = json.getLong("id")
+        val id = json.optLong("id", -1L)
+        if (id <= 0) return "[ERROR] 删除失败：缺少或无效的 id 参数"
         val existing = ScheduleRepository.schedules.value.find { it.id == id }
-        if (existing == null) return "[ERROR] 未找到 ID 为 $id 的日程"
+            ?: return "[ERROR] 未找到 ID 为 $id 的日程"
         ScheduleRepository.deleteSchedule(id)
-        return "已删除日程：${existing.title}"
+        return "[SUCCESS] 已删除日程：${existing.title}"
     }
 
     private fun optLongSafe(json: JSONObject, key: String): Long? {

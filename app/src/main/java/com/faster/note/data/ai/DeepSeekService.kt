@@ -10,6 +10,17 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
+data class ToolCall(
+    val id: String,
+    val name: String,
+    val arguments: String
+)
+
+data class ChatResult(
+    val content: String,
+    val toolCalls: List<ToolCall>
+)
+
 object DeepSeekService {
 
     private const val BASE_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -28,28 +39,30 @@ object DeepSeekService {
 - 后天 = ${todayStartMillis} + 172800000 = ${todayStartMillis + 172800000L}
 - 星期计算：今天星期${weekday}，下周一 = 今天 + ((8 - 今天星期几的数字) % 7) 天，下周二 = 下周一 + 86400000，依此类推
 
-【操作能力】
-通过在回复中嵌入指令块执行操作：
+【可用工具】
+你有以下工具可用，通过函数调用来执行操作：
 
-1. [ACTION:CREATE]{json}[/ACTION]
+1. read_schedules — 读取指定日期范围内的所有日程。当用户询问日程安排、分析日程或任何需要查询日程数据时，**必须**调用此工具，不能仅凭上下文回答。
+   参数: startDate(必填,纪元毫秒), endDate(必填,纪元毫秒)
+   返回: 管道分隔格式的日程列表，包含每个日程的 ID、日期、时间、标题、分组、完成状态
+
+2. create_schedule — 创建新日程
    参数: title(必填), date(必填,纪元毫秒), startTime, endTime, isAllDay, categoryName, notes
 
-2. [ACTION:READ]{json}[/ACTION]
-   参数: startDate(必填,纪元毫秒), endDate(必填,纪元毫秒)
-   系统返回该范围内的日程列表，包含每个日程的 [id] 供后续操作使用
+3. update_schedule_date — 修改日程的日期
+   参数: id(必填,日程ID), date(必填,新日期的纪元毫秒)
 
-3. [ACTION:UPDATE]{json}[/ACTION]
-   参数: id(必填,日程ID), 以及其他要修改的字段(title/date/startTime/endTime/isAllDay/isCompleted/categoryName/notes)
-   如果要修改日程，先使用 READ 查询找到日程的 id，再使用 UPDATE 更新
+4. update_schedule_info — 修改日程的详细信息（时间、标题、分组、完成状态、备注等）
+   参数: id(必填), 以及其他要修改的字段(title, startTime, endTime, isAllDay, categoryName, isCompleted, notes)
 
-4. [ACTION:DELETE]{json}[/ACTION]
+5. delete_schedule — 删除指定ID的日程
    参数: id(必填)
 
 【多步操作示例】
 用户："把下午3点的会议改成4点"
-AI 第一步：用 READ 查询今天日程找到会议 → 系统返回结果含 [id]
-AI 第二步：用 UPDATE 修改该 id 的 startTime/endTime → 系统返回修改结果
-AI 最终：根据实际结果回复用户，嵌入 SCHEDULE_CARD 展示更新后的日程
+调用 read_schedules(startDate=今天, endDate=今天) 查询找到会议 → 获得会议ID
+调用 update_schedule_info(id=会议ID, startTime=新的时间, endTime=新的结束时间) 修改时间
+AI 最终：根据工具返回的实际结果回复用户
 
 【SCHEDULE_CARD 格式】
 操作完成后，在回复中使用 [SCHEDULE_CARD:{json}] 标签嵌入可点击的日程卡片。
@@ -62,11 +75,265 @@ AI 最终：根据实际结果回复用户，嵌入 SCHEDULE_CARD 展示更新�
 错误示例：```json [SCHEDULE_CARD:{"id":1,"title":"团队会议","date":1717000000000}] ```
 
 【重要：回复规则】
-- **必须基于实际操作执行结果回复用户**。不要虚构或提前假设操作结果。
+- **必须基于工具返回的实际操作结果回复用户**。不要虚构或提前假设操作结果。
 - 如果操作失败（如找不到指定 ID 的日程、缺少必填参数等），必须在回复中如实告知用户失败原因。
-- 操作执行结果会以"操作执行结果："开头反馈给你，请仔细阅读并根据结果做出回复。
+- 工具执行结果会以 [SUCCESS]、[ERROR] 或 [RETRY] 开头反馈给你，请仔细阅读并根据结果做出回复。
 - 回复使用中文，可使用 Markdown 格式（标题、加粗、列表等）。
 """
+
+    fun buildToolsJson(): JSONArray = JSONArray().apply {
+        put(toolObject("read_schedules", "读取指定日期范围内的所有日程。当用户询问日程安排、分析日程或任何需要查询日程数据时，必须调用此工具，不能仅凭上下文回答。", JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("startDate", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "开始日期当地午夜的纪元毫秒")
+                })
+                put("endDate", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "结束日期当地午夜的纪元毫秒（包含该日期）")
+                })
+            })
+            put("required", JSONArray().apply { put("startDate"); put("endDate") })
+        }))
+        put(toolObject("create_schedule", "创建新日程", JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("title", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "日程标题")
+                })
+                put("date", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "日期当地午夜的纪元毫秒")
+                })
+                put("startTime", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "开始时间的纪元毫秒（可选）")
+                })
+                put("endTime", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "结束时间的纪元毫秒（可选）")
+                })
+                put("isAllDay", JSONObject().apply {
+                    put("type", "boolean")
+                    put("description", "是否全天日程")
+                })
+                put("categoryName", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "分组名称（可选，可选值：工作/个人/学习/健康）")
+                })
+                put("notes", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "备注（可选）")
+                })
+            })
+            put("required", JSONArray().apply { put("title"); put("date") })
+        }))
+        put(toolObject("update_schedule_date", "修改已有日程的日期", JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("id", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "日程ID")
+                })
+                put("date", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "新的日期当地午夜的纪元毫秒")
+                })
+            })
+            put("required", JSONArray().apply { put("id"); put("date") })
+        }))
+        put(toolObject("update_schedule_info", "修改日程的详细信息（时间、标题、分组、完成状态、备注等）。只包含需要修改的字段。", JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("id", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "日程ID")
+                })
+                put("title", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "新标题")
+                })
+                put("startTime", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "新开始时间的纪元毫秒")
+                })
+                put("endTime", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "新结束时间的纪元毫秒")
+                })
+                put("isAllDay", JSONObject().apply {
+                    put("type", "boolean")
+                    put("description", "是否全天日程")
+                })
+                put("categoryName", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "分组名称（可选值：工作/个人/学习/健康）")
+                })
+                put("isCompleted", JSONObject().apply {
+                    put("type", "boolean")
+                    put("description", "是否已完成")
+                })
+                put("notes", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "备注")
+                })
+            })
+            put("required", JSONArray().apply { put("id") })
+        }))
+        put(toolObject("delete_schedule", "删除指定ID的日程", JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("id", JSONObject().apply {
+                    put("type", "number")
+                    put("description", "日程ID")
+                })
+            })
+            put("required", JSONArray().apply { put("id") })
+        }))
+    }
+
+    private fun toolObject(name: String, desc: String, params: JSONObject) = JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", name)
+            put("description", desc)
+            put("parameters", params)
+        })
+    }
+
+    suspend fun chatCompletion(
+        apiKey: String,
+        messages: JSONArray,
+        systemPrompt: String,
+        tools: JSONArray? = null
+    ): ChatResult = withContext(Dispatchers.IO) {
+
+        val body = JSONObject().apply {
+            put("model", MODEL)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", systemPrompt)
+                })
+                for (i in 0 until messages.length()) {
+                    put(messages.getJSONObject(i))
+                }
+            })
+            if (tools != null) put("tools", tools)
+            put("temperature", 0.7)
+            put("max_tokens", 2048)
+        }
+
+        val conn = URL(BASE_URL).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
+
+            OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+
+            val responseCode = conn.responseCode
+            if (responseCode == 200) {
+                val reader = BufferedReader(InputStreamReader(conn.inputStream))
+                val response = reader.readText()
+                val json = JSONObject(response)
+                val message = json.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                val content = message.optString("content", "")
+                val toolCalls = if (message.has("tool_calls")) {
+                    val arr = message.getJSONArray("tool_calls")
+                    (0 until arr.length()).map { i ->
+                        val tc = arr.getJSONObject(i)
+                        val func = tc.getJSONObject("function")
+                        ToolCall(
+                            id = tc.getString("id"),
+                            name = func.getString("name"),
+                            arguments = func.getString("arguments")
+                        )
+                    }
+                } else emptyList()
+                ChatResult(content, toolCalls)
+            } else {
+                val errorReader = BufferedReader(InputStreamReader(conn.errorStream))
+                val errorBody = errorReader.readText()
+                val errorMsg = try {
+                    JSONObject(errorBody).optString("error", "未知错误")
+                } catch (_: Exception) {
+                    "HTTP $responseCode"
+                }
+                throw RuntimeException("API 请求失败: $errorMsg")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    suspend fun sendChatMessage(
+        apiKey: String,
+        messages: List<Pair<String, String>>,
+        systemPrompt: String
+    ): String = withContext(Dispatchers.IO) {
+
+        val body = JSONObject().apply {
+            put("model", MODEL)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", systemPrompt)
+                })
+                messages.forEach { (role, content) ->
+                    put(JSONObject().apply {
+                        put("role", role)
+                        put("content", content)
+                    })
+                }
+            })
+            put("temperature", 0.7)
+            put("max_tokens", 2048)
+        }
+
+        val conn = URL(BASE_URL).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
+
+            OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+
+            val responseCode = conn.responseCode
+            if (responseCode == 200) {
+                val reader = BufferedReader(
+                    InputStreamReader(conn.inputStream)
+                )
+                val response = reader.readText()
+                val json = JSONObject(response)
+                json.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
+            } else {
+                val errorReader = BufferedReader(InputStreamReader(conn.errorStream))
+                val errorBody = errorReader.readText()
+                val errorMsg = try {
+                    JSONObject(errorBody).optString("error", "未知错误")
+                } catch (_: Exception) {
+                    "HTTP $responseCode"
+                }
+                throw RuntimeException("API 请求失败: $errorMsg")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
 
     suspend fun requestAnalysis(
         apiKey: String,
@@ -136,67 +403,6 @@ AI 最终：根据实际结果回复用户，嵌入 SCHEDULE_CARD 展示更新�
                 conn.disconnect()
             }
         }
-
-    suspend fun sendChatMessage(
-        apiKey: String,
-        messages: List<Pair<String, String>>,
-        systemPrompt: String
-    ): String = withContext(Dispatchers.IO) {
-
-        val body = JSONObject().apply {
-            put("model", MODEL)
-            put("messages", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "system")
-                    put("content", systemPrompt)
-                })
-                messages.forEach { (role, content) ->
-                    put(JSONObject().apply {
-                        put("role", role)
-                        put("content", content)
-                    })
-                }
-            })
-            put("temperature", 0.7)
-            put("max_tokens", 2048)
-        }
-
-        val conn = URL(BASE_URL).openConnection() as HttpURLConnection
-        try {
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Authorization", "Bearer $apiKey")
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-            conn.connectTimeout = 30000
-            conn.readTimeout = 30000
-
-            OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
-
-            val responseCode = conn.responseCode
-            if (responseCode == 200) {
-                val reader = BufferedReader(
-                    InputStreamReader(conn.inputStream)
-                )
-                val response = reader.readText()
-                val json = JSONObject(response)
-                json.getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
-            } else {
-                val errorReader = BufferedReader(InputStreamReader(conn.errorStream))
-                val errorBody = errorReader.readText()
-                val errorMsg = try {
-                    JSONObject(errorBody).optString("error", "未知错误")
-                } catch (_: Exception) {
-                    "HTTP $responseCode"
-                }
-                throw RuntimeException("API 请求失败: $errorMsg")
-            }
-        } finally {
-            conn.disconnect()
-        }
-    }
 
     fun buildMonthPrompt(
         year: Int,

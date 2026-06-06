@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.sp
 import com.faster.note.data.ai.ActionParser
 import com.faster.note.data.ai.CardData
@@ -259,6 +260,18 @@ private fun buildDisplayBlocks(content: String, cards: List<CardData>): List<Res
 
 @Composable
 private fun AiLoadingBubble() {
+    val statusMessages = remember {
+        listOf("思考中", "分析中", "操作中", "请稍候", "读取中", "请等待")
+    }
+    var currentIndex by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(3000)
+            currentIndex = (currentIndex + 1) % statusMessages.size
+        }
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start
@@ -281,12 +294,21 @@ private fun AiLoadingBubble() {
             shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
-            Text(
-                text = "思考中...",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = statusMessages[currentIndex],
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
